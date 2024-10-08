@@ -1,0 +1,61 @@
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (SDK path, etc.)
+local.properties
+
+# Log and Android Studio files
+*.log
+.idea/
+.DS_Store
+*.iml
+*.hprof
+
+# Ignore Gradle cache and wrapper files
+.caches/
+.gradle/
+.gradle/caches/
+.gradle/gradle-app.cache
+.gradle/gradle-wrapper.jar
+
+# Ignore Android build files
+/build
+/app/build
+/**/build/
+
+# Ignore APK, AAB and Bundle files in the root of directory
+*.apk
+*.ap_
+*.aab
+*.jar
+*.keystore
+
+# Ignore Google Services JSON or XML (API keys, etc.)
+google-services.json
+google-services.xml
+
+# Ignore Mac OS generated files
+*.DS_Store
+
+# Ignore Linux temporary files
+*~
+
+# Ignore crashlytics specific files
+crashlytics.properties
+fabric.properties
+*.mapping
+*.symbols
+
+# Android Studio specific files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Miscellaneous
+*.orig
+
+# Ignore the generated files in the root of the project
+/android/app/build
+/android/app/.externalNativeBuild
