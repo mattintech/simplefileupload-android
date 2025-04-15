@@ -54,6 +54,17 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".view.MainActivity" />
         </activity>
+        
+        <!-- Settings Activity -->
+        <activity
+            android:name=".view.SettingsActivity"
+            android:label="Settings"
+            android:parentActivityName=".view.MainActivity"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".view.MainActivity" />
+        </activity>
 
         <!-- File Upload Foreground Service -->
         <service

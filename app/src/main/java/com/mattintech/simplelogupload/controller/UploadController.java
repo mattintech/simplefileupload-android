@@ -11,6 +11,7 @@ import com.mattintech.simplelogupload.db.UploadHistoryRepository;
 import com.mattintech.simplelogupload.model.UploadHistory;
 import com.mattintech.simplelogupload.model.UploadResult;
 import com.mattintech.simplelogupload.service.FileUploadForegroundService;
+import com.mattintech.simplelogupload.util.PreferencesUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -103,10 +104,20 @@ public class UploadController {
                 .addFormDataPart(NetworkConstants.PARAM_EXPIRY_HOURS, String.valueOf(expiryHours))
                 .build();
 
+        // Get server URL and client key from preferences
+        String serverUrl = PreferencesUtil.getServerUrl(context);
+        String clientKey = PreferencesUtil.getClientKey(context);
+        
+        Log.d(TAG, "Using server URL: " + serverUrl);
+        
+        // Build request with client-key header
         Request request = new Request.Builder()
-                .url(NetworkConstants.SERVER_URL)
+                .url(serverUrl)
+                .header(NetworkConstants.CLIENT_KEY_HEADER, clientKey)
                 .post(requestBody)
                 .build();
+        
+        Log.d(TAG, "Sending upload request with " + NetworkConstants.CLIENT_KEY_HEADER + " header");
 
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -142,8 +153,16 @@ public class UploadController {
                     }
                 } else {
                     String errorBody = response.body().string();
-                    String errorMsg = "Upload failed, Response code: " + response.code();
-                    Log.e(TAG, errorMsg + ", Body: " + errorBody);
+                    String errorMsg;
+                    
+                    // Check for authentication errors
+                    if (response.code() == 401 || response.code() == 403) {
+                        errorMsg = "Authentication failed. Please check client key.";
+                        Log.e(TAG, "Authentication error: " + response.code() + ", Body: " + errorBody);
+                    } else {
+                        errorMsg = "Upload failed, Response code: " + response.code();
+                        Log.e(TAG, errorMsg + ", Body: " + errorBody);
+                    }
                     
                     try {
                         JSONObject errorJson = new JSONObject(errorBody);

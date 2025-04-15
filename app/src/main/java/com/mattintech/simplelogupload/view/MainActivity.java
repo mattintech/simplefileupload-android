@@ -305,6 +305,10 @@ public class MainActivity extends AppCompatActivity {
             // Open upload history activity
             startActivity(new Intent(this, UploadHistoryActivity.class));
             return true;
+        } else if (id == R.id.action_settings) {
+            // Open settings activity
+            startActivity(new Intent(this, SettingsActivity.class));
+            return true;
         }
         
         return super.onOptionsItemSelected(item);

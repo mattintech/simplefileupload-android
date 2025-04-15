@@ -4,13 +4,17 @@ package com.mattintech.simplelogupload.constant;
  * Network-related constants
  */
 public class NetworkConstants {
-    // Server constants
-    public static final String SERVER_URL = "http://172.16.100.167:7777/upload";
+    // These URL constants are now dynamically set in getServerUrl()
+    // via PreferencesUtil to allow for customization
+    public static final String SERVER_URL_BASE = "/upload";
     
     // Upload parameters
     public static final String PARAM_FILE = "file";
     public static final String PARAM_MAX_DOWNLOADS = "max_downloads";
     public static final String PARAM_EXPIRY_HOURS = "expiry_hours";
+    
+    // Authentication
+    public static final String CLIENT_KEY_HEADER = "client-key";
     
     // Default values
     public static final int DEFAULT_MAX_DOWNLOADS = 1;
