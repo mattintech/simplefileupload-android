@@ -53,9 +53,17 @@ public class SettingsActivity extends AppCompatActivity {
      * Load current settings from SharedPreferences
      */
     private void loadSettings() {
-        serverAddressInput.setText(PreferencesUtil.getServerAddress(this));
-        serverPortInput.setText(String.valueOf(PreferencesUtil.getServerPort(this)));
-        clientKeyInput.setText(PreferencesUtil.getClientKey(this));
+        String serverAddress = PreferencesUtil.getServerAddress(this);
+        int serverPort = PreferencesUtil.getServerPort(this);
+        String clientKey = PreferencesUtil.getClientKey(this);
+        
+        serverAddressInput.setText(serverAddress);
+        if (serverPort > 0) {
+            serverPortInput.setText(String.valueOf(serverPort));
+        } else {
+            serverPortInput.setText("");
+        }
+        clientKeyInput.setText(clientKey);
     }
     
     /**

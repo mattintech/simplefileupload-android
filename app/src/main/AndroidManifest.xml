@@ -65,6 +65,23 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".view.MainActivity" />
         </activity>
+        
+        <!-- Welcome Activity -->
+        <activity
+            android:name=".view.WelcomeActivity"
+            android:label="Welcome"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+            
+        <!-- Server Setup Activity -->
+        <activity
+            android:name=".view.ServerSetupActivity"
+            android:label="Server Setup"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".view.WelcomeActivity" />
+        </activity>
 
         <!-- File Upload Foreground Service -->
         <service

@@ -25,6 +25,7 @@ import com.mattintech.simplelogupload.controller.ShareIntentHandler;
 import com.mattintech.simplelogupload.controller.UploadController;
 import com.mattintech.simplelogupload.service.FileUploadForegroundService;
 import com.mattintech.simplelogupload.util.PermissionUtil;
+import com.mattintech.simplelogupload.util.PreferencesUtil;
 
 import java.io.File;
 import java.util.List;
@@ -48,6 +49,16 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // Check if setup is required
+        if (!PreferencesUtil.isSetupCompleted(this) || !PreferencesUtil.areServerSettingsConfigured(this)) {
+            // Navigate to welcome activity
+            Intent intent = new Intent(this, WelcomeActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
+        
         setContentView(R.layout.activity_main);
         
         uploadController = new UploadController(this);

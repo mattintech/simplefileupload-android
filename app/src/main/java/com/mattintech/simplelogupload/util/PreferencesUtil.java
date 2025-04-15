@@ -13,11 +13,13 @@ public class PreferencesUtil {
     public static final String KEY_SERVER_ADDRESS = "server_address";
     public static final String KEY_SERVER_PORT = "server_port";
     public static final String KEY_CLIENT_KEY = "client_key";
+    public static final String KEY_SETUP_COMPLETED = "setup_completed";
     
     // Default values
-    private static final String DEFAULT_SERVER_ADDRESS = "172.16.100.167";
-    private static final int DEFAULT_SERVER_PORT = 7777;
-    private static final String DEFAULT_CLIENT_KEY = "default-secret-key";
+    private static final String DEFAULT_SERVER_ADDRESS = "";
+    private static final int DEFAULT_SERVER_PORT = 0;
+    private static final String DEFAULT_CLIENT_KEY = "";
+    private static final boolean DEFAULT_SETUP_COMPLETED = false;
     
     /**
      * Get the shared preferences instance
@@ -111,6 +113,42 @@ public class PreferencesUtil {
         editor.putString(KEY_SERVER_ADDRESS, DEFAULT_SERVER_ADDRESS);
         editor.putInt(KEY_SERVER_PORT, DEFAULT_SERVER_PORT);
         editor.putString(KEY_CLIENT_KEY, DEFAULT_CLIENT_KEY);
+        editor.putBoolean(KEY_SETUP_COMPLETED, DEFAULT_SETUP_COMPLETED);
         editor.apply();
+    }
+    
+    /**
+     * Check if setup has been completed
+     * 
+     * @param context The application context
+     * @return True if setup has been completed, false otherwise
+     */
+    public static boolean isSetupCompleted(Context context) {
+        return getPreferences(context).getBoolean(KEY_SETUP_COMPLETED, DEFAULT_SETUP_COMPLETED);
+    }
+    
+    /**
+     * Set the setup completed status
+     * 
+     * @param context The application context
+     * @param completed True if setup has been completed, false otherwise
+     */
+    public static void setSetupCompleted(Context context, boolean completed) {
+        getPreferences(context).edit().putBoolean(KEY_SETUP_COMPLETED, completed).apply();
+    }
+    
+    /**
+     * Check if all required server settings are configured
+     * 
+     * @param context The application context
+     * @return True if all required settings are configured, false otherwise
+     */
+    public static boolean areServerSettingsConfigured(Context context) {
+        SharedPreferences prefs = getPreferences(context);
+        String address = prefs.getString(KEY_SERVER_ADDRESS, DEFAULT_SERVER_ADDRESS);
+        int port = prefs.getInt(KEY_SERVER_PORT, DEFAULT_SERVER_PORT);
+        String clientKey = prefs.getString(KEY_CLIENT_KEY, DEFAULT_CLIENT_KEY);
+        
+        return !address.isEmpty() && port > 0 && !clientKey.isEmpty();
     }
 }
