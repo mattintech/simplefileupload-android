@@ -252,34 +252,45 @@ public class MainActivity extends AppCompatActivity {
         List<File> selectedFiles = dumpstateAdapter.getSelectedFiles();
         int fileCount = selectedFiles.size();
         
-        // Update UI
-        progressBar.setVisibility(View.VISIBLE);
-        uploadDumpstateButton.setEnabled(false);
-        dumpstateStatusText.setText(getString(R.string.preparing_multiple_files, fileCount));
-        
-        // Prepare and upload multiple files
-        FileController.prepareMultipleFilesForUploadAsync(selectedFiles, this)
-                .thenAccept(zipFile -> {
-                    Log.d(TAG, "Multiple files zipped successfully: " + zipFile.getAbsolutePath());
-                    
-                    runOnUiThread(() -> {
-                        dumpstateStatusText.setText(getString(R.string.uploading_multiple_files, fileCount));
-                    });
-                    
-                    // Upload the zip file
-                    startUploadService(zipFile);
-                })
-                .exceptionally(ex -> {
-                    Log.e(TAG, "Error preparing multiple files", ex);
-                    runOnUiThread(() -> {
-                        progressBar.setVisibility(View.GONE);
-                        uploadDumpstateButton.setEnabled(true);
-                        Toast.makeText(MainActivity.this, 
-                                getString(R.string.file_error, ex.getMessage()), 
-                                Toast.LENGTH_LONG).show();
-                    });
-                    return null;
-                });
+        // Show upload parameters dialog first
+        new UploadParamsDialog(this, new UploadParamsDialog.UploadParamsListener() {
+            @Override
+            public void onUploadParamsSet(int maxDownloads, int expiryHours) {
+                // Update UI
+                progressBar.setVisibility(View.VISIBLE);
+                uploadDumpstateButton.setEnabled(false);
+                dumpstateStatusText.setText(getString(R.string.preparing_multiple_files, fileCount));
+                
+                // Prepare and upload multiple files
+                FileController.prepareMultipleFilesForUploadAsync(selectedFiles, MainActivity.this)
+                        .thenAccept(zipFile -> {
+                            Log.d(TAG, "Multiple files zipped successfully: " + zipFile.getAbsolutePath());
+                            
+                            runOnUiThread(() -> {
+                                dumpstateStatusText.setText(getString(R.string.uploading_multiple_files, fileCount));
+                            });
+                            
+                            // Upload the zip file with parameters
+                            startUploadService(zipFile, maxDownloads, expiryHours);
+                        })
+                        .exceptionally(ex -> {
+                            Log.e(TAG, "Error preparing multiple files", ex);
+                            runOnUiThread(() -> {
+                                progressBar.setVisibility(View.GONE);
+                                uploadDumpstateButton.setEnabled(true);
+                                Toast.makeText(MainActivity.this, 
+                                        getString(R.string.file_error, ex.getMessage()), 
+                                        Toast.LENGTH_LONG).show();
+                            });
+                            return null;
+                        });
+            }
+            
+            @Override
+            public void onUploadParamsCancelled() {
+                // User cancelled, do nothing
+            }
+        }).show();
     }
     
     @Override
@@ -389,13 +400,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         
-        // Update UI
-        progressBar.setVisibility(View.VISIBLE);
-        uploadSelectedFileButton.setEnabled(false);
-        selectedFileText.setText(getString(R.string.uploading_file, selectedFile.getName()));
-        
-        // Start the upload service
-        startUploadService(selectedFile);
+        // Show upload parameters dialog
+        showUploadParamsDialog(selectedFile);
     }
     
     /**
@@ -413,7 +419,7 @@ public class MainActivity extends AppCompatActivity {
         if (dumpstateFiles.length == 1) {
             // Only one dumpstate file, use it directly
             dumpstateFile = dumpstateFiles[0];
-            startDumpstateUpload(dumpstateFile);
+            showUploadParamsDialog(dumpstateFile);
         } else {
             // Multiple dumpstate files are available, suggest expanding the list
             if (!isDumpstateListExpanded) {
@@ -421,7 +427,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 // If list is already expanded, use the first file
                 dumpstateFile = dumpstateFiles[0];
-                startDumpstateUpload(dumpstateFile);
+                showUploadParamsDialog(dumpstateFile);
             }
         }
     }
@@ -430,8 +436,10 @@ public class MainActivity extends AppCompatActivity {
      * Start uploading the selected dumpstate file
      * 
      * @param file The dumpstate file to upload
+     * @param maxDownloads The maximum number of downloads
+     * @param expiryHours The expiry time in hours
      */
-    private void startDumpstateUpload(File file) {
+    private void startDumpstateUpload(File file, int maxDownloads, int expiryHours) {
         if (file == null || !file.exists()) {
             Toast.makeText(this, R.string.no_dumpstate_found, Toast.LENGTH_SHORT).show();
             return;
@@ -442,20 +450,55 @@ public class MainActivity extends AppCompatActivity {
         uploadDumpstateButton.setEnabled(false);
         dumpstateStatusText.setText(getString(R.string.uploading_file, file.getName()));
         
-        // Start the upload service
-        startUploadService(file);
+        // Start the upload service with parameters
+        startUploadService(file, maxDownloads, expiryHours);
     }
     
     /**
-     * Start the upload service with the given file
+     * Start the upload service with the given file and parameters
      * 
      * @param file The file to upload
+     * @param maxDownloads The maximum number of downloads
+     * @param expiryHours The expiry time in hours
      */
-    private void startUploadService(File file) {
+    private void startUploadService(File file, int maxDownloads, int expiryHours) {
         // Start the upload service
         Intent serviceIntent = new Intent(this, FileUploadForegroundService.class);
         serviceIntent.putExtra(FileUploadForegroundService.EXTRA_FILE_PATH, file.getAbsolutePath());
+        serviceIntent.putExtra(FileUploadForegroundService.EXTRA_MAX_DOWNLOADS, maxDownloads);
+        serviceIntent.putExtra(FileUploadForegroundService.EXTRA_EXPIRY_HOURS, expiryHours);
         startService(serviceIntent);
+    }
+    
+    /**
+     * Show the upload parameters dialog
+     * 
+     * @param file The file to upload
+     */
+    private void showUploadParamsDialog(File file) {
+        new UploadParamsDialog(this, new UploadParamsDialog.UploadParamsListener() {
+            @Override
+            public void onUploadParamsSet(int maxDownloads, int expiryHours) {
+                // Update UI
+                progressBar.setVisibility(View.VISIBLE);
+                uploadSelectedFileButton.setEnabled(false);
+                
+                if (file == selectedFile) {
+                    selectedFileText.setText(getString(R.string.uploading_file, file.getName()));
+                } else if (file == dumpstateFile) {
+                    dumpstateStatusText.setText(getString(R.string.uploading_file, file.getName()));
+                    uploadDumpstateButton.setEnabled(false);
+                }
+                
+                // Start the upload service with parameters
+                startUploadService(file, maxDownloads, expiryHours);
+            }
+            
+            @Override
+            public void onUploadParamsCancelled() {
+                // User cancelled, do nothing
+            }
+        }).show();
     }
     
     /**

@@ -92,15 +92,25 @@ public class PreferencesUtil {
     }
     
     /**
+     * Get the server base URL (address + port) without any path
+     * 
+     * @param context The application context
+     * @return The server base URL
+     */
+    public static String getServerBaseUrl(Context context) {
+        String address = getServerAddress(context);
+        int port = getServerPort(context);
+        return "http://" + address + ":" + port;
+    }
+    
+    /**
      * Get the complete server URL (address + port + path)
      * 
      * @param context The application context
      * @return The complete server URL
      */
     public static String getServerUrl(Context context) {
-        String address = getServerAddress(context);
-        int port = getServerPort(context);
-        return "http://" + address + ":" + port + "/upload";
+        return getServerBaseUrl(context) + "/upload";
     }
     
     /**

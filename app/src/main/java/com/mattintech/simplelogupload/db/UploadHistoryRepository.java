@@ -37,6 +37,17 @@ public class UploadHistoryRepository {
     }
     
     /**
+     * Get all history entries as a one-time operation
+     * 
+     * @return CompletableFuture containing a list of all history entries
+     */
+    public CompletableFuture<List<UploadHistory>> getAllHistoryOneTime() {
+        return CompletableFuture.supplyAsync(() -> 
+                mUploadHistoryDao.getAllHistoryDirect(), 
+                AppDatabase.databaseWriteExecutor);
+    }
+    
+    /**
      * Insert a new history entry asynchronously
      * 
      * @param entry The entry to insert

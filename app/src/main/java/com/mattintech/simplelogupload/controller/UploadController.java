@@ -208,4 +208,64 @@ public class UploadController {
                     return null;
                 });
     }
+    
+    /**
+     * Delete a file from the server using its upload code
+     * 
+     * @param uploadCode The upload code of the file to delete
+     * @return CompletableFuture containing a boolean indicating success or failure
+     */
+    public CompletableFuture<Boolean> deleteFileFromServer(String uploadCode) {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        
+        if (uploadCode == null || uploadCode.isEmpty()) {
+            Log.e(TAG, "Cannot delete file with empty upload code");
+            future.complete(false);
+            return future;
+        }
+        
+        // Create OkHttpClient with timeout configuration
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(NetworkConstants.CONNECTION_TIMEOUT, TimeUnit.SECONDS)
+                .readTimeout(NetworkConstants.READ_TIMEOUT, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)
+                .build();
+        
+        // Get server base URL and client key from preferences
+        String serverBaseUrl = PreferencesUtil.getServerBaseUrl(context);
+        String clientKey = PreferencesUtil.getClientKey(context);
+        
+        // Create the delete URL
+        String deleteUrl = serverBaseUrl + "/delete/" + uploadCode;
+        Log.d(TAG, "Deleting file from server: " + deleteUrl);
+        
+        // Build request with client-key header
+        Request request = new Request.Builder()
+                .url(deleteUrl)
+                .header(NetworkConstants.CLIENT_KEY_HEADER, clientKey)
+                .delete()
+                .build();
+        
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e(TAG, "Server delete failed", e);
+                future.complete(false);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    Log.d(TAG, "Server delete successful for code: " + uploadCode);
+                    future.complete(true);
+                } else {
+                    String errorBody = response.body().string();
+                    Log.e(TAG, "Server delete failed with code: " + response.code() + ", Body: " + errorBody);
+                    future.complete(false);
+                }
+            }
+        });
+        
+        return future;
+    }
 }

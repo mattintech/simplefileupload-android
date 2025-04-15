@@ -10,6 +10,8 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -73,6 +75,18 @@ public class UploadHistoryActivity extends AppCompatActivity implements UploadHi
                 }
             }
         });
+        
+        // Observe the delete status to provide feedback
+        viewModel.getDeleteStatus().observe(this, deleteSuccess -> {
+            if (deleteSuccess != null) {
+                if (deleteSuccess) {
+                    Toast.makeText(this, "File deleted from server successfully", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Failed to delete file from server, but removed from local history", 
+                           Toast.LENGTH_LONG).show();
+                }
+            }
+        });
     }
     
     @Override
@@ -83,8 +97,30 @@ public class UploadHistoryActivity extends AppCompatActivity implements UploadHi
             finish();
             return true;
         } else if (id == R.id.action_clear_history) {
-            viewModel.deleteAll();
-            Toast.makeText(this, "History cleared", Toast.LENGTH_SHORT).show();
+            // Show confirmation dialog
+            new AlertDialog.Builder(this)
+                    .setTitle("Clear All History")
+                    .setMessage("Do you want to delete all uploads from both local history and the server?")
+                    .setPositiveButton("Yes", (dialog, which) -> {
+                        // Show progress dialog
+                        AlertDialog progressDialog = new AlertDialog.Builder(this)
+                                .setTitle("Deleting...")
+                                .setMessage("Attempting to delete all files from server and clear history.")
+                                .setCancelable(false)
+                                .create();
+                        progressDialog.show();
+                        
+                        // Attempt to delete all
+                        viewModel.deleteAll()
+                                .thenAccept(unused -> {
+                                    runOnUiThread(() -> {
+                                        progressDialog.dismiss();
+                                        // Toast message will be shown through the observer
+                                    });
+                                });
+                    })
+                    .setNegativeButton("No", null)
+                    .show();
             return true;
         }
         
@@ -98,7 +134,29 @@ public class UploadHistoryActivity extends AppCompatActivity implements UploadHi
     
     @Override
     public void onDeleteClick(UploadHistory history) {
-        viewModel.delete(history);
+        // Show confirmation dialog
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Upload")
+                .setMessage("Do you want to delete this upload from both local history and the server?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    // Show progress dialog
+                    AlertDialog progressDialog = new AlertDialog.Builder(this)
+                            .setTitle("Deleting...")
+                            .setMessage("Attempting to delete from server and local history.")
+                            .setCancelable(false)
+                            .create();
+                    progressDialog.show();
+                    
+                    // Attempt to delete
+                    viewModel.delete(history)
+                            .thenAccept(unused -> {
+                                runOnUiThread(() -> {
+                                    progressDialog.dismiss();
+                                });
+                            });
+                })
+                .setNegativeButton("No", null)
+                .show();
     }
     
     /**

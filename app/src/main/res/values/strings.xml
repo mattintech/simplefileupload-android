@@ -56,4 +56,15 @@
     <string name="no_dumpstates_selected">No files selected</string>
     <string name="preparing_multiple_files">Preparing %1$d files for upload…</string>
     <string name="uploading_multiple_files">Uploading %1$d files as one package</string>
+    
+    <!-- Upload Parameters Dialog -->
+    <string name="upload_params_title">Upload Parameters</string>
+    <string name="max_downloads_label">Maximum Downloads:</string>
+    <string name="max_downloads_hint">Default: 1</string>
+    <string name="max_downloads_note">Set to 0 for unlimited downloads</string>
+    <string name="expiry_time_label">Expiry Time (hours):</string>
+    <string name="expiry_time_hint">Default: 24</string>
+    <string name="expiry_time_note">Maximum 24 hours (1 day)</string>
+    <string name="cancel_button">Cancel</string>
+    <string name="upload_button">Upload</string>
 </resources>

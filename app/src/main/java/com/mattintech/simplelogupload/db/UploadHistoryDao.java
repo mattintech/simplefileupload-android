@@ -33,6 +33,14 @@ public interface UploadHistoryDao {
     LiveData<List<UploadHistory>> getAllHistory();
     
     /**
+     * Get all history entries ordered by upload time (most recent first) as a direct list
+     * 
+     * @return List of history entries
+     */
+    @Query("SELECT * FROM upload_history ORDER BY upload_time DESC")
+    List<UploadHistory> getAllHistoryDirect();
+    
+    /**
      * Get a history entry by ID
      * 
      * @param id The ID of the entry

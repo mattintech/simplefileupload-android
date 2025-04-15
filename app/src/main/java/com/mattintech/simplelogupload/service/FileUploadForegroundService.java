@@ -60,6 +60,15 @@ public class FileUploadForegroundService extends Service {
         int maxDownloads = intent.getIntExtra(EXTRA_MAX_DOWNLOADS, NetworkConstants.DEFAULT_MAX_DOWNLOADS);
         int expiryHours = intent.getIntExtra(EXTRA_EXPIRY_HOURS, NetworkConstants.DEFAULT_EXPIRY_HOURS);
         
+        // Log parameters for debugging
+        Log.d(TAG, "Upload parameters - Max Downloads: " + maxDownloads + ", Expiry Hours: " + expiryHours);
+        
+        // Validate expiry hours
+        if (expiryHours > NetworkConstants.MAX_EXPIRY_HOURS) {
+            Log.w(TAG, "Expiry hours exceeded maximum allowed value, capping at " + NetworkConstants.MAX_EXPIRY_HOURS);
+            expiryHours = NetworkConstants.MAX_EXPIRY_HOURS;
+        }
+        
         if (filePath == null) {
             Log.e(TAG, "No file path provided");
             // Try to find the most recent dump state file
@@ -91,12 +100,16 @@ public class FileUploadForegroundService extends Service {
             startForeground(NOTIFICATION_ID, createInitialNotification());
         }
         
+        // Create final copies for use in the callback
+        final int finalMaxDownloads = maxDownloads;
+        final int finalExpiryHours = expiryHours;
+        
         // Prepare file for upload
         FileController.prepareFileForUpload(file, new FileController.FilePrepareCallback() {
             @Override
             public void onSuccess(File preparedFile) {
                 Log.d(TAG, "File prepared for upload: " + preparedFile.getName());
-                uploadFile(preparedFile, maxDownloads, expiryHours);
+                uploadFile(preparedFile, finalMaxDownloads, finalExpiryHours);
             }
             
             @Override
