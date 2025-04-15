@@ -14,7 +14,7 @@ public class NetworkConstants {
     public static final String PARAM_EXPIRY_HOURS = "expiry_hours";
     
     // Authentication
-    public static final String CLIENT_KEY_HEADER = "client-key";
+    public static final String CLIENT_KEY_HEADER = "X-Client-Key";
     
     // Default values
     public static final int DEFAULT_MAX_DOWNLOADS = 1;
