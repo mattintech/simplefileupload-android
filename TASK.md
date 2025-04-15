@@ -16,23 +16,23 @@
 ## 🛠️ Core Features to Implement
 
 ### 🔗 Share Integration
-- [ ] Add `<intent-filter>` in `AndroidManifest.xml` for ACTION_SEND and ACTION_SEND_MULTIPLE
-- [ ] Handle incoming shared files in `MainActivity` or a new controller
-- [ ] Automatically start the upload process from shared intent
+- [x] Add `<intent-filter>` in `AndroidManifest.xml` for ACTION_SEND and ACTION_SEND_MULTIPLE
+- [x] Handle incoming shared files in `MainActivity` or a new controller
+- [x] Automatically start the upload process from shared intent
 
 ### 📦 Zip Before Upload
-- [ ] Detect if selected/shared file is already a `.zip`
-- [ ] If not zipped, compress it to `.zip` format
-- [ ] Use the zipped version for upload
+- [x] Detect if selected/shared file is already a `.zip`
+- [x] If not zipped, compress it to `.zip` format
+- [x] Use the zipped version for upload
 
 ### 📜 Upload History
-- [ ] Create a local database or use SharedPreferences to log:
+- [x] Create a local database or use SharedPreferences to log:
     - File name
     - Upload time
     - Server-returned code
     - Max downloads & expiry
-- [ ] Add new UI to list previously uploaded files
-- [ ] Allow copy of upload code and option to delete history entry
+- [x] Add new UI to list previously uploaded files
+- [x] Allow copy of upload code and option to delete history entry
 
 ### ⬆️ Upload Enhancements
 - [x] Replace TinyURL logic with server-provided 6-digit alphanumeric code
@@ -53,11 +53,11 @@
 ---
 
 ## 🧪 Testing Scenarios
-- [ ] Manual upload with various file types
-- [ ] Share intent upload flow
-- [ ] Zip logic works on large files
+- [x] Manual upload with various file types
+- [x] Share intent upload flow
+- [x] Zip logic works on large files
 - [x] Network disruptions (offline/retry handling)
-- [ ] UI responsiveness on phones and tablets
+- [x] UI responsiveness on phones and tablets
 
 ---
 
@@ -69,6 +69,7 @@
     - History storage
     - Share intent handler
 - [x] Improve logs for debugging failures
+- [x] Ensure compatibility with Android 14+ (API 34)
 
 ---
 
