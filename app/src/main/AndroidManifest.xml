@@ -14,7 +14,10 @@
         android:label="SimpleLogUpload"
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">  <!-- Add this line -->
+        android:largeHeap="true"
+        android:requestLegacyExternalStorage="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">
         <activity
             android:name=".MainActivity"
             android:exported="true">

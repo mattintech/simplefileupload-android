@@ -5,10 +5,11 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
-import android.app.job.JobService;
-import android.app.job.JobParameters;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -17,6 +18,7 @@ import android.os.Environment;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.RequiresApi;
@@ -31,7 +33,11 @@ public class MainActivity extends Activity {
     private static final int REQUEST_MANAGE_EXTERNAL_STORAGE = 101;
     private TextView resultView;
     private Button uploadButton;
+    private ProgressBar progressBar;
     private File mostRecentDumpStateFile;
+    
+    // BroadcastReceiver to listen for upload results
+    private BroadcastReceiver uploadReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,7 +46,7 @@ public class MainActivity extends Activity {
 
         resultView = findViewById(R.id.resultView);
         uploadButton = findViewById(R.id.uploadButton);
-
+        progressBar = findViewById(R.id.progressBar);
 
         // Check for All Files Access Permission
         requestNotificationPermission();
@@ -54,8 +60,50 @@ public class MainActivity extends Activity {
             if (mostRecentDumpStateFile != null) {
                 //scheduleJob();
                 startFileUpload();
+                progressBar.setVisibility(View.VISIBLE);
+                uploadButton.setEnabled(false);
+                resultView.setText("Uploading file...");
             }
         });
+        
+        // Initialize broadcast receiver
+        uploadReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                progressBar.setVisibility(View.GONE);
+                uploadButton.setEnabled(true);
+                
+                if (intent.getAction().equals(Constant.ACTION_UPLOAD_COMPLETE)) {
+                    String uploadCode = intent.getStringExtra(Constant.EXTRA_UPLOAD_CODE);
+                    showUploadSuccessDialog(uploadCode);
+                } else if (intent.getAction().equals(Constant.ACTION_UPLOAD_ERROR)) {
+                    String errorMessage = intent.getStringExtra(Constant.EXTRA_UPLOAD_ERROR);
+                    Toast.makeText(MainActivity.this, "Upload Error: " + errorMessage, Toast.LENGTH_LONG).show();
+                    resultView.setText("Upload failed: " + errorMessage);
+                }
+            }
+        };
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Register the broadcast receiver
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Constant.ACTION_UPLOAD_COMPLETE);
+        filter.addAction(Constant.ACTION_UPLOAD_ERROR);
+        registerReceiver(uploadReceiver, filter);
+    }
+    
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Unregister the broadcast receiver
+        try {
+            unregisterReceiver(uploadReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver not registered
+        }
     }
 
     private void requestNotificationPermission() {
@@ -94,7 +142,7 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_MANAGE_EXTERNAL_STORAGE) {
             if (hasAllFilesAccessPermission()) {
-                scheduleJob(); // Now you can proceed if permission is granted
+                checkForDumpStateAndUpdateUI();
             } else {
                 Toast.makeText(this, "Permission not granted!", Toast.LENGTH_SHORT).show();
             }
@@ -138,7 +186,10 @@ public class MainActivity extends Activity {
         } else {
             startService(serviceIntent);
         }
-
     }
-
+    
+    private void showUploadSuccessDialog(String uploadCode) {
+        UploadResultDialog dialog = new UploadResultDialog(this, uploadCode);
+        dialog.show();
+    }
 }
