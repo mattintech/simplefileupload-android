@@ -1,4 +1,3 @@
-
 # 📱 Task List for SimpleLogUpload (Android App)
 
 ## 🧭 Project Goals
@@ -75,13 +74,13 @@
 
 ## 🚀 Future Ideas
 - [ ] Dark mode UI
-- [ ] Multi-file upload
+- [x] Multi-file upload
 - [ ] Upload status notification with retry option
 - [ ] Settings UI to customize upload URL
 - [ ] Delete from client deletes from server 
-- [ ] Improve Icons and overall UI to be less ugly
+- [x] Improve Icons and overall UI to be less ugly
 - [ ] Add iOS support.  (Only if someone asks...)
 - [ ] Let user define max downloads and save the setting in a shared preference
-- [ ] Multi-Dumpstate upload 
+- [x] Multi-Dumpstate upload 
 - [ ] Dumpstate cleanup after successful upload
 - [ ] Provide steps of how to collect a dumpstate and download the server
