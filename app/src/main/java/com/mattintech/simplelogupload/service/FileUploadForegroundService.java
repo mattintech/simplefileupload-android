@@ -173,7 +173,7 @@ public class FileUploadForegroundService extends Service {
         notificationBuilder = new NotificationCompat.Builder(this, AppConstants.NOTIFICATION_CHANNEL_ID)
                 .setContentTitle("File Upload")
                 .setContentText("Preparing file...")
-                .setSmallIcon(R.drawable.logupload)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(pendingIntent)
                 .setProgress(100, 0, true)
                 .setOngoing(true);

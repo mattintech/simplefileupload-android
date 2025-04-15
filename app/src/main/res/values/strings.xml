@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SimpleLogUpload</string>
+    <string name="title_activity_main">SimpleLogUpload</string>
+    
+    <!-- Main UI -->
+    <string name="app_header">Upload Files</string>
+    <string name="select_file_button">Select File from Storage</string>
+    <string name="upload_dumpstate_button">Upload Samsung Dumpstate</string>
+    <string name="upload_selected_file">Upload File</string>
+    <string name="no_file_selected">No file selected</string>
+    <string name="looking_for_dumpstate">Looking for dumpstate…</string>
+    <string name="no_dumpstate_found">No dumpstate file found</string>
+    <string name="dumpstate_found">Dumpstate found: %1$s</string>
+    <string name="selected_file">File: %1$s</string>
+    <string name="uploading_file">Uploading: %1$s</string>
+    <string name="upload_success">Upload successful! Code: %1$s</string>
+    <string name="upload_error">Upload error: %1$s</string>
+    <string name="file_error">Error processing file: %1$s</string>
+    
+    <!-- Upload options section -->
+    <string name="upload_options_title">Select Upload Option</string>
+    <string name="dumpstate_section_title">Dumpstate Detection</string>
+    <string name="selected_file_section_title">Selected File</string>
+    
+    <!-- Menu -->
+    <string name="menu_history">History</string>
+    <string name="menu_settings">Settings</string>
+    
+    <!-- Upload Dialog -->
+    <string name="dialog_upload_success_title">Upload Successful</string>
+    <string name="dialog_upload_code">Your upload code is:</string>
+    <string name="dialog_copy_code">Copy Code</string>
+    <string name="dialog_close">Close</string>
+    <string name="code_copied">Code copied to clipboard</string>
+    
+    <!-- Permissions -->
+    <string name="permission_storage_required">Storage permission is required</string>
+    <string name="permission_not_granted">Permission not granted!</string>
+</resources>

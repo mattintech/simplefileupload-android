@@ -1,6 +1,9 @@
 package com.mattintech.simplelogupload.view;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.content.BroadcastReceiver;
@@ -36,15 +39,24 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = AppConstants.APP_TAG + "MainActivity";
     
-    private TextView resultView;
-    private Button uploadButton;
+    private TextView dumpstateStatusText;
+    private TextView selectedFileText;
+    private Button selectFileButton;
+    private Button uploadDumpstateButton;
+    private Button uploadSelectedFileButton;
     private ProgressBar progressBar;
+    private CardView selectedFileCard;
+    
     private File selectedFile;
+    private File dumpstateFile;
     
     private UploadController uploadController;
     
     // BroadcastReceiver to listen for upload results
     private BroadcastReceiver uploadReceiver;
+    
+    // Activity result launcher for file picking
+    private ActivityResultLauncher<String> filePickerLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,17 +71,33 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         
+        // Set content view
         setContentView(R.layout.activity_main);
         
         uploadController = new UploadController(this);
         
         // Initialize UI elements
-        resultView = findViewById(R.id.resultView);
-        uploadButton = findViewById(R.id.uploadButton);
+        dumpstateStatusText = findViewById(R.id.dumpstateStatusText);
+        selectedFileText = findViewById(R.id.selectedFileText);
+        selectFileButton = findViewById(R.id.selectFileButton);
+        uploadDumpstateButton = findViewById(R.id.uploadDumpstateButton);
+        uploadSelectedFileButton = findViewById(R.id.uploadSelectedFileButton);
         progressBar = findViewById(R.id.progressBar);
+        selectedFileCard = findViewById(R.id.selectedFileCard);
         
         // Set up button click listeners
-        uploadButton.setOnClickListener(v -> startUpload());
+        selectFileButton.setOnClickListener(v -> openFilePicker());
+        uploadDumpstateButton.setOnClickListener(v -> uploadDumpstate());
+        uploadSelectedFileButton.setOnClickListener(v -> uploadSelectedFile());
+        
+        // Initialize file picker launcher
+        filePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        handleFileSelection(uri);
+                    }
+                });
         
         // Check for necessary permissions
         checkAndRequestPermissions();
@@ -120,19 +148,14 @@ public class MainActivity extends AppCompatActivity {
         // For now, just handle the first URI
         Uri sharedUri = sharedUris.get(0);
         
-        resultView.setText("Processing shared file...");
         progressBar.setVisibility(View.VISIBLE);
-        uploadButton.setEnabled(false);
         
         // Process the shared URI
         ShareIntentHandler.processSharedUri(this, sharedUri)
                 .thenAccept(file -> {
                     // Save the file for upload
-                    selectedFile = file;
+                    updateSelectedFile(file);
                     runOnUiThread(() -> {
-                        resultView.setText("File ready: " + file.getName());
-                        uploadButton.setEnabled(true);
-                        uploadButton.setVisibility(View.VISIBLE);
                         progressBar.setVisibility(View.GONE);
                     });
                 })
@@ -140,13 +163,111 @@ public class MainActivity extends AppCompatActivity {
                     Log.e(TAG, "Error processing shared file", ex);
                     runOnUiThread(() -> {
                         Toast.makeText(MainActivity.this, 
-                                "Error processing file: " + ex.getMessage(), 
+                                getString(R.string.file_error, ex.getMessage()), 
                                 Toast.LENGTH_LONG).show();
-                        resultView.setText("Error processing file");
                         progressBar.setVisibility(View.GONE);
                     });
                     return null;
                 });
+    }
+    
+    /**
+     * Opens the file picker
+     */
+    private void openFilePicker() {
+        filePickerLauncher.launch("*/*");
+    }
+    
+    /**
+     * Handle file selection from file picker
+     * 
+     * @param uri The URI of the selected file
+     */
+    private void handleFileSelection(Uri uri) {
+        progressBar.setVisibility(View.VISIBLE);
+        
+        // Process the URI
+        ShareIntentHandler.processSharedUri(this, uri)
+                .thenAccept(file -> {
+                    // Save the file for upload
+                    updateSelectedFile(file);
+                    runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                    });
+                })
+                .exceptionally(ex -> {
+                    Log.e(TAG, "Error processing selected file", ex);
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this, 
+                                getString(R.string.file_error, ex.getMessage()), 
+                                Toast.LENGTH_LONG).show();
+                        progressBar.setVisibility(View.GONE);
+                    });
+                    return null;
+                });
+    }
+    
+    /**
+     * Upload the selected file
+     */
+    private void uploadSelectedFile() {
+        if (selectedFile == null || !selectedFile.exists()) {
+            Toast.makeText(this, R.string.no_file_selected, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Update UI
+        progressBar.setVisibility(View.VISIBLE);
+        uploadSelectedFileButton.setEnabled(false);
+        selectedFileText.setText(getString(R.string.uploading_file, selectedFile.getName()));
+        
+        // Start the upload service
+        startUploadService(selectedFile);
+    }
+    
+    /**
+     * Upload the dumpstate file
+     */
+    private void uploadDumpstate() {
+        if (dumpstateFile == null || !dumpstateFile.exists()) {
+            Toast.makeText(this, R.string.no_dumpstate_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Update UI
+        progressBar.setVisibility(View.VISIBLE);
+        uploadDumpstateButton.setEnabled(false);
+        dumpstateStatusText.setText(getString(R.string.uploading_file, dumpstateFile.getName()));
+        
+        // Start the upload service
+        startUploadService(dumpstateFile);
+    }
+    
+    /**
+     * Start the upload service with the given file
+     * 
+     * @param file The file to upload
+     */
+    private void startUploadService(File file) {
+        // Start the upload service
+        Intent serviceIntent = new Intent(this, FileUploadForegroundService.class);
+        serviceIntent.putExtra(FileUploadForegroundService.EXTRA_FILE_PATH, file.getAbsolutePath());
+        startService(serviceIntent);
+    }
+    
+    /**
+     * Update the selected file UI
+     * 
+     * @param file The selected file
+     */
+    private void updateSelectedFile(File file) {
+        selectedFile = file;
+        runOnUiThread(() -> {
+            selectedFileCard.setVisibility(View.VISIBLE);
+            selectedFileText.setText(getString(R.string.selected_file, file.getName()));
+            uploadSelectedFileButton.setVisibility(View.VISIBLE);
+            uploadSelectedFileButton.setEnabled(true);
+        });
     }
     
     /**
@@ -158,7 +279,8 @@ public class MainActivity extends AppCompatActivity {
             public void onReceive(Context context, Intent intent) {
                 Log.d(TAG, "Received broadcast: " + intent.getAction());
                 progressBar.setVisibility(View.GONE);
-                uploadButton.setEnabled(true);
+                uploadSelectedFileButton.setEnabled(true);
+                uploadDumpstateButton.setEnabled(true);
                 
                 if (intent.getAction().equals(AppConstants.ACTION_UPLOAD_COMPLETE)) {
                     String uploadCode = intent.getStringExtra(AppConstants.EXTRA_UPLOAD_CODE);
@@ -167,11 +289,25 @@ public class MainActivity extends AppCompatActivity {
                 } else if (intent.getAction().equals(AppConstants.ACTION_UPLOAD_ERROR)) {
                     String errorMessage = intent.getStringExtra(AppConstants.EXTRA_UPLOAD_ERROR);
                     Log.e(TAG, "Upload error: " + errorMessage);
-                    Toast.makeText(MainActivity.this, "Upload Error: " + errorMessage, Toast.LENGTH_LONG).show();
-                    resultView.setText("Upload failed: " + errorMessage);
+                    Toast.makeText(MainActivity.this, 
+                            getString(R.string.upload_error, errorMessage), 
+                            Toast.LENGTH_LONG).show();
+                    resetUI();
                 }
             }
         };
+    }
+    
+    /**
+     * Reset the UI after upload completion or error
+     */
+    private void resetUI() {
+        dumpstateStatusText.setText(dumpstateFile != null ? 
+                getString(R.string.dumpstate_found, dumpstateFile.getName()) : 
+                getString(R.string.no_dumpstate_found));
+        if (selectedFile != null) {
+            selectedFileText.setText(getString(R.string.selected_file, selectedFile.getName()));
+        }
     }
     
     @Override
@@ -231,23 +367,17 @@ public class MainActivity extends AppCompatActivity {
      * Check for dumpstate files and update the UI
      */
     private void checkForDumpStateAndUpdateUI() {
-        // If we already have a selected file (e.g., from share), use that
-        if (selectedFile != null && selectedFile.exists()) {
-            resultView.setText("File selected: " + selectedFile.getName());
-            uploadButton.setVisibility(View.VISIBLE);
-            return;
-        }
-        
-        // Otherwise, look for dumpstate files
+        // Look for dumpstate files
         File mostRecentDumpStateFile = FileController.getMostRecentDumpStateFile();
         
         if (mostRecentDumpStateFile != null) {
-            selectedFile = mostRecentDumpStateFile;
-            resultView.setText("Dumpstate found: " + mostRecentDumpStateFile.getName());
-            uploadButton.setVisibility(View.VISIBLE);
+            dumpstateFile = mostRecentDumpStateFile;
+            dumpstateStatusText.setText(getString(R.string.dumpstate_found, mostRecentDumpStateFile.getName()));
+            uploadDumpstateButton.setEnabled(true);
         } else {
-            resultView.setText("No dumpstate file found.");
-            uploadButton.setVisibility(View.GONE);
+            dumpstateFile = null;
+            dumpstateStatusText.setText(R.string.no_dumpstate_found);
+            uploadDumpstateButton.setEnabled(false);
         }
     }
     
@@ -259,29 +389,9 @@ public class MainActivity extends AppCompatActivity {
             if (PermissionUtil.hasAllFilesAccessPermission()) {
                 checkForDumpStateAndUpdateUI();
             } else {
-                Toast.makeText(this, "Storage permission not granted!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.permission_not_granted, Toast.LENGTH_SHORT).show();
             }
         }
-    }
-    
-    /**
-     * Start the upload process
-     */
-    private void startUpload() {
-        if (selectedFile == null || !selectedFile.exists()) {
-            Toast.makeText(this, "No file selected", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        
-        // Update UI
-        progressBar.setVisibility(View.VISIBLE);
-        uploadButton.setEnabled(false);
-        resultView.setText("Uploading file...");
-        
-        // Start the upload service
-        Intent serviceIntent = new Intent(this, FileUploadForegroundService.class);
-        serviceIntent.putExtra(FileUploadForegroundService.EXTRA_FILE_PATH, selectedFile.getAbsolutePath());
-        startService(serviceIntent);
     }
     
     /**
@@ -297,7 +407,7 @@ public class MainActivity extends AppCompatActivity {
                 dialog.show();
             } catch (Exception e) {
                 Log.e(TAG, "Error showing upload result dialog", e);
-                Toast.makeText(this, "Upload successful! Code: " + uploadCode, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.upload_success, uploadCode), Toast.LENGTH_LONG).show();
             }
         });
     }
