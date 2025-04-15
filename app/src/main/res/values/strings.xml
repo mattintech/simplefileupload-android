@@ -37,4 +37,23 @@
     <!-- Permissions -->
     <string name="permission_storage_required">Storage permission is required</string>
     <string name="permission_not_granted">Permission not granted!</string>
+    
+    <!-- Dumpstate Selection Dialog -->
+    <string name="dumpstate_selection_title">Select a Dumpstate File</string>
+    <string name="dumpstate_selection_subtitle">Found %1$d dumpstate files</string>
+    <string name="select_button">Select</string>
+    <string name="dumpstate_date_format">Created: %1$s</string>
+    <string name="dumpstate_size_format">Size: %1$s</string>
+    <string name="multiple_dumpstates_found">Multiple dumpstate files found</string>
+    <string name="choose_dumpstate">Choose a dumpstate file</string>
+    
+    <!-- Multi-select Dumpstate -->
+    <string name="show_dumpstates">Show Files</string>
+    <string name="hide_dumpstates">Hide Files</string>
+    <string name="select_all">Select All</string>
+    <string name="clear_selections">Clear All</string>
+    <string name="upload_multiple_dumpstates">Upload Selected Files (%1$d)</string>
+    <string name="no_dumpstates_selected">No files selected</string>
+    <string name="preparing_multiple_files">Preparing %1$d files for upload…</string>
+    <string name="uploading_multiple_files">Uploading %1$d files as one package</string>
 </resources>

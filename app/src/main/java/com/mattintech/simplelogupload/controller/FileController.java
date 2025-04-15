@@ -13,7 +13,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.Callable;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
@@ -39,6 +39,15 @@ public class FileController {
      */
     public static File getMostRecentDumpStateFile() {
         return FileUtil.findMostRecentDumpStateFile();
+    }
+    
+    /**
+     * Find all dumpstate files
+     * 
+     * @return Array of dumpstate files
+     */
+    public static File[] getAllDumpStateFiles() {
+        return FileUtil.findAllDumpStateFiles();
     }
     
     /**
@@ -92,6 +101,47 @@ public class FileController {
     }
     
     /**
+     * Prepare multiple files for upload by zipping them into a single file
+     * 
+     * @param files The list of files to prepare
+     * @param context The context
+     * @param callback Callback for progress updates and completion
+     */
+    public static void prepareMultipleFilesForUpload(List<File> files, Context context, FilePrepareCallback callback) {
+        if (files == null || files.isEmpty()) {
+            callback.onError(new IOException("No files provided"));
+            return;
+        }
+        
+        // Create a unique filename for the zip
+        String zipFileName = "multiple_files_" + System.currentTimeMillis() + FileConstants.ZIP_EXTENSION;
+        
+        try {
+            // Use cache directory for temporary zip storage
+            ZipUtil.zipFiles(files, context.getCacheDir(), zipFileName, new ZipUtil.ZipProgressListener() {
+                @Override
+                public void onProgress(long bytesProcessed, long totalBytes) {
+                    int progress = (int) ((bytesProcessed * 100) / Math.max(totalBytes, 1)); // Avoid division by zero
+                    callback.onProgress(progress);
+                }
+                
+                @Override
+                public void onComplete(File zipFile) {
+                    callback.onSuccess(zipFile);
+                }
+                
+                @Override
+                public void onError(Exception e) {
+                    callback.onError(e);
+                }
+            });
+        } catch (IOException e) {
+            Log.e(TAG, "Error preparing multiple files for upload", e);
+            callback.onError(e);
+        }
+    }
+    
+    /**
      * Prepare a file for upload asynchronously
      * 
      * @param file The file to prepare
@@ -119,6 +169,32 @@ public class FileController {
                 return ZipUtil.zipFile(file);
             } catch (IOException e) {
                 Log.e(TAG, "Error preparing file for upload", e);
+                throw new RuntimeException(e);
+            }
+        }, Executors.newSingleThreadExecutor());
+    }
+    
+    /**
+     * Prepare multiple files for upload asynchronously
+     * 
+     * @param files The list of files to prepare
+     * @param context The context
+     * @return CompletableFuture containing the prepared file
+     */
+    public static CompletableFuture<File> prepareMultipleFilesForUploadAsync(List<File> files, Context context) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                if (files == null || files.isEmpty()) {
+                    throw new IOException("No files provided");
+                }
+                
+                // Create a unique filename for the zip
+                String zipFileName = "multiple_files_" + System.currentTimeMillis() + FileConstants.ZIP_EXTENSION;
+                
+                // Use cache directory for temporary zip storage
+                return ZipUtil.zipFiles(files, context.getCacheDir(), zipFileName, null);
+            } catch (IOException e) {
+                Log.e(TAG, "Error preparing multiple files for upload", e);
                 throw new RuntimeException(e);
             }
         }, Executors.newSingleThreadExecutor());

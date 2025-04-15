@@ -84,13 +84,64 @@
                 android:textSize="18sp"
                 android:textStyle="bold"/>
 
-            <TextView
-                android:id="@+id/dumpstateStatusText"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp">
+                
+                <TextView
+                    android:id="@+id/dumpstateStatusText"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/looking_for_dumpstate"
+                    android:textSize="16sp"
+                    android:maxLines="3"
+                    android:ellipsize="start"/>
+                    
+                <Button
+                    android:id="@+id/toggleDumpstateListButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/show_dumpstates"
+                    android:textSize="12sp"
+                    style="@style/Widget.AppCompat.Button.Small" />
+            </LinearLayout>
+            
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/dumpstateRecyclerView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/looking_for_dumpstate"
-                android:textSize="16sp"/>
+                android:visibility="gone"/>
+                
+            <LinearLayout
+                android:id="@+id/multiSelectButtonsLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                android:visibility="gone">
+                
+                <Button
+                    android:id="@+id/selectAllButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/select_all"
+                    android:textSize="12sp"
+                    style="@style/Widget.AppCompat.Button.Borderless.Colored" />
+                    
+                <Button
+                    android:id="@+id/clearSelectionsButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/clear_selections"
+                    android:textSize="12sp"
+                    style="@style/Widget.AppCompat.Button.Borderless.Colored" />
+            </LinearLayout>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 

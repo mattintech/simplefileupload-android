@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -105,6 +106,109 @@ public class ZipUtil {
             return zipFile;
         } catch (IOException e) {
             Log.e(TAG, "Error creating zip file", e);
+            
+            // Clean up the partial zip file if it exists
+            if (zipFile.exists()) {
+                boolean deleted = zipFile.delete();
+                if (!deleted) {
+                    Log.w(TAG, "Failed to delete partial zip file: " + zipFile.getAbsolutePath());
+                }
+            }
+            
+            if (listener != null) {
+                listener.onError(e);
+            }
+            
+            throw e;
+        }
+    }
+    
+    /**
+     * Compresses multiple files into a single zip archive
+     * 
+     * @param sourceFiles List of files to compress
+     * @param outputDirectory Directory to store the zip file
+     * @param zipFileName Name of the zip file to create
+     * @param listener A listener for tracking progress (can be null)
+     * @return The compressed zip file
+     * @throws IOException If compression fails
+     */
+    public static File zipFiles(List<File> sourceFiles, File outputDirectory, String zipFileName, 
+                              ZipProgressListener listener) throws IOException {
+        if (sourceFiles == null || sourceFiles.isEmpty()) {
+            String msg = "No source files provided for zipping";
+            Log.e(TAG, msg);
+            throw new IOException(msg);
+        }
+        
+        // Create output directory if it doesn't exist
+        if (!outputDirectory.exists()) {
+            if (!outputDirectory.mkdirs()) {
+                throw new IOException("Could not create output directory: " + outputDirectory.getAbsolutePath());
+            }
+        }
+        
+        // Ensure the zip extension
+        if (!zipFileName.toLowerCase().endsWith(FileConstants.ZIP_EXTENSION)) {
+            zipFileName += FileConstants.ZIP_EXTENSION;
+        }
+        
+        // Create a zip file in the output directory
+        File zipFile = new File(outputDirectory, zipFileName);
+        
+        Log.d(TAG, "Creating multi-file zip: " + zipFile.getAbsolutePath() + " with " + sourceFiles.size() + " files");
+        
+        // Calculate total size for progress reporting
+        long totalBytes = 0;
+        for (File file : sourceFiles) {
+            if (file.exists()) {
+                totalBytes += file.length();
+            }
+        }
+        
+        try (FileOutputStream fos = new FileOutputStream(zipFile);
+             BufferedOutputStream bos = new BufferedOutputStream(fos);
+             ZipOutputStream zos = new ZipOutputStream(bos)) {
+            
+            byte[] buffer = new byte[BUFFER_SIZE];
+            long bytesProcessed = 0;
+            
+            for (File file : sourceFiles) {
+                if (!file.exists() || !file.isFile()) {
+                    Log.w(TAG, "Skipping non-existent or non-file: " + file.getAbsolutePath());
+                    continue;
+                }
+                
+                try (FileInputStream fis = new FileInputStream(file);
+                     BufferedInputStream bis = new BufferedInputStream(fis)) {
+                    
+                    ZipEntry zipEntry = new ZipEntry(file.getName());
+                    zipEntry.setSize(file.length());
+                    zos.putNextEntry(zipEntry);
+                    
+                    int len;
+                    while ((len = bis.read(buffer)) > 0) {
+                        zos.write(buffer, 0, len);
+                        bytesProcessed += len;
+                        
+                        if (listener != null) {
+                            listener.onProgress(bytesProcessed, totalBytes);
+                        }
+                    }
+                    
+                    zos.closeEntry();
+                }
+            }
+            
+            if (listener != null) {
+                listener.onComplete(zipFile);
+            }
+            
+            Log.d(TAG, "Successfully created multi-file zip: " + zipFile.getName());
+            return zipFile;
+            
+        } catch (IOException e) {
+            Log.e(TAG, "Error creating multi-file zip", e);
             
             // Clean up the partial zip file if it exists
             if (zipFile.exists()) {

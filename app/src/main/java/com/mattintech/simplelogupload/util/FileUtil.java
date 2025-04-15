@@ -17,37 +17,46 @@ public class FileUtil {
     private static final String TAG = AppConstants.APP_TAG + "FileUtil";
     
     /**
+     * Finds all dumpstate files in the logs directory
+     * @return Array of dumpstate files or empty array if none found
+     */
+    public static File[] findAllDumpStateFiles() {
+        File dir = new File(Environment.getExternalStorageDirectory(), FileConstants.LOG_DIRECTORY);
+        return findAllFilesByPattern(dir, AppConstants.DUMPSTATE_FILE_PATTERN);
+    }
+    
+    /**
      * Finds the most recent dumpstate file in the logs directory
      * @return The most recent dumpstate file or null if none found
      */
     public static File findMostRecentDumpStateFile() {
-        File dir = new File(Environment.getExternalStorageDirectory(), FileConstants.LOG_DIRECTORY);
-        return findMostRecentFileByPattern(dir, AppConstants.DUMPSTATE_FILE_PATTERN);
+        File[] files = findAllDumpStateFiles();
+        return files.length > 0 ? files[0] : null;
     }
     
     /**
-     * Finds the most recent file in a directory matching the given pattern
+     * Finds all files in a directory matching the given pattern
      * 
      * @param dir The directory to search
      * @param pattern The regex pattern to match filenames
-     * @return The most recent matching file or null if none found
+     * @return Array of matching files or empty array if none found
      */
-    public static File findMostRecentFileByPattern(File dir, String pattern) {
+    public static File[] findAllFilesByPattern(File dir, String pattern) {
         if (dir == null || !dir.exists() || !dir.isDirectory()) {
             Log.e(TAG, "Invalid directory: " + (dir != null ? dir.getAbsolutePath() : "null"));
-            return null;
+            return new File[0];
         }
         
         File[] files = dir.listFiles((d, name) -> name.matches(pattern));
         
-        if (files == null || files.length == 0) {
+        if (files == null) {
             Log.d(TAG, "No files matching pattern '" + pattern + "' found in " + dir.getAbsolutePath());
-            return null;
+            return new File[0];
         }
         
-        return Arrays.stream(files)
-                .max(Comparator.comparingLong(File::lastModified))
-                .orElse(null);
+        // Sort files by last modified date (newest first)
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        return files;
     }
     
     /**

@@ -5,6 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -17,11 +19,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.mattintech.simplelogupload.R;
+import com.mattintech.simplelogupload.adapter.DumpstateAdapter;
 import com.mattintech.simplelogupload.constant.AppConstants;
 import com.mattintech.simplelogupload.controller.FileController;
 import com.mattintech.simplelogupload.controller.ShareIntentHandler;
@@ -31,6 +35,8 @@ import com.mattintech.simplelogupload.util.PermissionUtil;
 import com.mattintech.simplelogupload.util.PreferencesUtil;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -47,6 +53,14 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private CardView selectedFileCard;
     
+    // Dumpstate multi-select components
+    private RecyclerView dumpstateRecyclerView;
+    private Button toggleDumpstateListButton;
+    private Button selectAllButton;
+    private Button clearSelectionsButton;
+    private LinearLayout multiSelectButtonsLayout;
+    private DumpstateAdapter dumpstateAdapter;
+    
     private File selectedFile;
     private File dumpstateFile;
     
@@ -57,6 +71,9 @@ public class MainActivity extends AppCompatActivity {
     
     // Activity result launcher for file picking
     private ActivityResultLauncher<String> filePickerLauncher;
+    
+    // Flag to track if dumpstate list is expanded
+    private boolean isDumpstateListExpanded = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,10 +102,23 @@ public class MainActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         selectedFileCard = findViewById(R.id.selectedFileCard);
         
+        // Initialize multi-select UI elements
+        dumpstateRecyclerView = findViewById(R.id.dumpstateRecyclerView);
+        toggleDumpstateListButton = findViewById(R.id.toggleDumpstateListButton);
+        selectAllButton = findViewById(R.id.selectAllButton);
+        clearSelectionsButton = findViewById(R.id.clearSelectionsButton);
+        multiSelectButtonsLayout = findViewById(R.id.multiSelectButtonsLayout);
+        
+        // Set up RecyclerView
+        dumpstateRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        
         // Set up button click listeners
         selectFileButton.setOnClickListener(v -> openFilePicker());
         uploadDumpstateButton.setOnClickListener(v -> uploadDumpstate());
         uploadSelectedFileButton.setOnClickListener(v -> uploadSelectedFile());
+        toggleDumpstateListButton.setOnClickListener(v -> toggleDumpstateList());
+        selectAllButton.setOnClickListener(v -> selectAllDumpstates());
+        clearSelectionsButton.setOnClickListener(v -> clearDumpstateSelections());
         
         // Initialize file picker launcher
         filePickerLauncher = registerForActivityResult(
@@ -107,6 +137,149 @@ public class MainActivity extends AppCompatActivity {
         
         // Handle intent (e.g., from share)
         handleIntent(getIntent());
+    }
+    
+    /**
+     * Toggle the visibility of the dumpstate list
+     */
+    private void toggleDumpstateList() {
+        isDumpstateListExpanded = !isDumpstateListExpanded;
+        
+        if (isDumpstateListExpanded) {
+            // Show the list
+            loadDumpstateFiles();
+            dumpstateRecyclerView.setVisibility(View.VISIBLE);
+            multiSelectButtonsLayout.setVisibility(View.VISIBLE);
+            toggleDumpstateListButton.setText(R.string.hide_dumpstates);
+            
+            // Change the upload button to handle multiple files
+            updateUploadButtonForMultiSelect();
+        } else {
+            // Hide the list
+            dumpstateRecyclerView.setVisibility(View.GONE);
+            multiSelectButtonsLayout.setVisibility(View.GONE);
+            toggleDumpstateListButton.setText(R.string.show_dumpstates);
+            
+            // Restore normal upload button
+            uploadDumpstateButton.setText(R.string.upload_dumpstate_button);
+            uploadDumpstateButton.setOnClickListener(v -> uploadDumpstate());
+        }
+    }
+    
+    /**
+     * Load dumpstate files into the RecyclerView
+     */
+    private void loadDumpstateFiles() {
+        File[] dumpstateFiles = FileController.getAllDumpStateFiles();
+        
+        if (dumpstateFiles.length > 0) {
+            List<File> fileList = new ArrayList<>(Arrays.asList(dumpstateFiles));
+            
+            if (dumpstateAdapter == null) {
+                dumpstateAdapter = new DumpstateAdapter(this, fileList);
+                dumpstateAdapter.setOnSelectionChangedListener(this::onDumpstateSelectionChanged);
+                dumpstateRecyclerView.setAdapter(dumpstateAdapter);
+            } else {
+                // Just update the adapter with new files
+                dumpstateAdapter = new DumpstateAdapter(this, fileList);
+                dumpstateAdapter.setOnSelectionChangedListener(this::onDumpstateSelectionChanged);
+                dumpstateRecyclerView.setAdapter(dumpstateAdapter);
+            }
+        }
+    }
+    
+    /**
+     * Handle selection changes in the dumpstate list
+     * 
+     * @param selectedCount The number of selected items
+     */
+    private void onDumpstateSelectionChanged(int selectedCount) {
+        // Update the upload button text
+        if (selectedCount > 0) {
+            uploadDumpstateButton.setText(getString(R.string.upload_multiple_dumpstates, selectedCount));
+            uploadDumpstateButton.setEnabled(true);
+        } else {
+            uploadDumpstateButton.setText(R.string.upload_dumpstate_button);
+            uploadDumpstateButton.setEnabled(false);
+        }
+    }
+    
+    /**
+     * Update the upload button to handle multiple files
+     */
+    private void updateUploadButtonForMultiSelect() {
+        uploadDumpstateButton.setOnClickListener(v -> uploadSelectedDumpstates());
+        
+        // Initially disable until files are selected
+        uploadDumpstateButton.setEnabled(dumpstateAdapter != null && dumpstateAdapter.getSelectedCount() > 0);
+        
+        // Update button text if there are already selections
+        if (dumpstateAdapter != null && dumpstateAdapter.getSelectedCount() > 0) {
+            uploadDumpstateButton.setText(getString(R.string.upload_multiple_dumpstates, 
+                    dumpstateAdapter.getSelectedCount()));
+        } else {
+            uploadDumpstateButton.setText(R.string.upload_dumpstate_button);
+        }
+    }
+    
+    /**
+     * Select all dumpstate files
+     */
+    private void selectAllDumpstates() {
+        if (dumpstateAdapter != null) {
+            dumpstateAdapter.selectAll();
+        }
+    }
+    
+    /**
+     * Clear all dumpstate selections
+     */
+    private void clearDumpstateSelections() {
+        if (dumpstateAdapter != null) {
+            dumpstateAdapter.clearSelections();
+        }
+    }
+    
+    /**
+     * Upload selected dumpstate files
+     */
+    private void uploadSelectedDumpstates() {
+        if (dumpstateAdapter == null || dumpstateAdapter.getSelectedCount() == 0) {
+            Toast.makeText(this, R.string.no_dumpstates_selected, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        List<File> selectedFiles = dumpstateAdapter.getSelectedFiles();
+        int fileCount = selectedFiles.size();
+        
+        // Update UI
+        progressBar.setVisibility(View.VISIBLE);
+        uploadDumpstateButton.setEnabled(false);
+        dumpstateStatusText.setText(getString(R.string.preparing_multiple_files, fileCount));
+        
+        // Prepare and upload multiple files
+        FileController.prepareMultipleFilesForUploadAsync(selectedFiles, this)
+                .thenAccept(zipFile -> {
+                    Log.d(TAG, "Multiple files zipped successfully: " + zipFile.getAbsolutePath());
+                    
+                    runOnUiThread(() -> {
+                        dumpstateStatusText.setText(getString(R.string.uploading_multiple_files, fileCount));
+                    });
+                    
+                    // Upload the zip file
+                    startUploadService(zipFile);
+                })
+                .exceptionally(ex -> {
+                    Log.e(TAG, "Error preparing multiple files", ex);
+                    runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        uploadDumpstateButton.setEnabled(true);
+                        Toast.makeText(MainActivity.this, 
+                                getString(R.string.file_error, ex.getMessage()), 
+                                Toast.LENGTH_LONG).show();
+                    });
+                    return null;
+                });
     }
     
     @Override
@@ -229,7 +402,37 @@ public class MainActivity extends AppCompatActivity {
      * Upload the dumpstate file
      */
     private void uploadDumpstate() {
-        if (dumpstateFile == null || !dumpstateFile.exists()) {
+        // Get all dumpstate files
+        File[] dumpstateFiles = FileController.getAllDumpStateFiles();
+        
+        if (dumpstateFiles.length == 0) {
+            Toast.makeText(this, R.string.no_dumpstate_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        if (dumpstateFiles.length == 1) {
+            // Only one dumpstate file, use it directly
+            dumpstateFile = dumpstateFiles[0];
+            startDumpstateUpload(dumpstateFile);
+        } else {
+            // Multiple dumpstate files are available, suggest expanding the list
+            if (!isDumpstateListExpanded) {
+                toggleDumpstateList();
+            } else {
+                // If list is already expanded, use the first file
+                dumpstateFile = dumpstateFiles[0];
+                startDumpstateUpload(dumpstateFile);
+            }
+        }
+    }
+    
+    /**
+     * Start uploading the selected dumpstate file
+     * 
+     * @param file The dumpstate file to upload
+     */
+    private void startDumpstateUpload(File file) {
+        if (file == null || !file.exists()) {
             Toast.makeText(this, R.string.no_dumpstate_found, Toast.LENGTH_SHORT).show();
             return;
         }
@@ -237,10 +440,10 @@ public class MainActivity extends AppCompatActivity {
         // Update UI
         progressBar.setVisibility(View.VISIBLE);
         uploadDumpstateButton.setEnabled(false);
-        dumpstateStatusText.setText(getString(R.string.uploading_file, dumpstateFile.getName()));
+        dumpstateStatusText.setText(getString(R.string.uploading_file, file.getName()));
         
         // Start the upload service
-        startUploadService(dumpstateFile);
+        startUploadService(file);
     }
     
     /**
@@ -302,9 +505,41 @@ public class MainActivity extends AppCompatActivity {
      * Reset the UI after upload completion or error
      */
     private void resetUI() {
-        dumpstateStatusText.setText(dumpstateFile != null ? 
-                getString(R.string.dumpstate_found, dumpstateFile.getName()) : 
-                getString(R.string.no_dumpstate_found));
+        // Get all dumpstate files
+        File[] dumpstateFiles = FileController.getAllDumpStateFiles();
+        
+        if (dumpstateFiles.length > 0) {
+            if (dumpstateFiles.length == 1) {
+                // Only one dumpstate file
+                dumpstateFile = dumpstateFiles[0];
+                dumpstateStatusText.setText(getString(R.string.dumpstate_found, dumpstateFile.getName()));
+            } else {
+                // Multiple dumpstate files
+                dumpstateStatusText.setText(getString(R.string.multiple_dumpstates_found) + 
+                                           " (" + dumpstateFiles.length + ")");
+                                           
+                // If we have a specific file selected, show it
+                if (dumpstateFile != null && dumpstateFile.exists()) {
+                    dumpstateStatusText.append("\n" + dumpstateFile.getName());
+                } else {
+                    // Otherwise show the most recent one
+                    dumpstateFile = dumpstateFiles[0];
+                    dumpstateStatusText.append("\n" + dumpstateFile.getName());
+                }
+            }
+            uploadDumpstateButton.setEnabled(true);
+            
+            // Update multiselect if active
+            if (isDumpstateListExpanded && dumpstateAdapter != null) {
+                loadDumpstateFiles();
+                updateUploadButtonForMultiSelect();
+            }
+        } else {
+            dumpstateFile = null;
+            dumpstateStatusText.setText(R.string.no_dumpstate_found);
+            uploadDumpstateButton.setEnabled(false);
+        }
+        
         if (selectedFile != null) {
             selectedFileText.setText(getString(R.string.selected_file, selectedFile.getName()));
         }
@@ -368,16 +603,33 @@ public class MainActivity extends AppCompatActivity {
      */
     private void checkForDumpStateAndUpdateUI() {
         // Look for dumpstate files
-        File mostRecentDumpStateFile = FileController.getMostRecentDumpStateFile();
+        File[] dumpstateFiles = FileController.getAllDumpStateFiles();
         
-        if (mostRecentDumpStateFile != null) {
-            dumpstateFile = mostRecentDumpStateFile;
-            dumpstateStatusText.setText(getString(R.string.dumpstate_found, mostRecentDumpStateFile.getName()));
-            uploadDumpstateButton.setEnabled(true);
+        if (dumpstateFiles.length > 0) {
+            if (dumpstateFiles.length == 1) {
+                // Only one dumpstate file found, use it directly
+                dumpstateFile = dumpstateFiles[0];
+                dumpstateStatusText.setText(getString(R.string.dumpstate_found, dumpstateFile.getName()));
+                uploadDumpstateButton.setEnabled(true);
+            } else {
+                // Multiple dumpstate files found
+                dumpstateStatusText.setText(getString(R.string.multiple_dumpstates_found) + 
+                                           " (" + dumpstateFiles.length + ")");
+                
+                // Set the most recent one as default
+                dumpstateFile = dumpstateFiles[0];
+                // Show the dumpstate name in a new line
+                dumpstateStatusText.append("\n" + dumpstateFile.getName());
+                uploadDumpstateButton.setEnabled(true);
+                
+                // Update toggle button visibility
+                toggleDumpstateListButton.setVisibility(View.VISIBLE);
+            }
         } else {
             dumpstateFile = null;
             dumpstateStatusText.setText(R.string.no_dumpstate_found);
             uploadDumpstateButton.setEnabled(false);
+            toggleDumpstateListButton.setVisibility(View.GONE);
         }
     }
     
