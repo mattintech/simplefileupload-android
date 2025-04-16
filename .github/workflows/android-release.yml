@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write  # This is needed to create releases
+
 jobs:
   build:
     name: Build and Create Release
@@ -76,6 +79,7 @@ jobs:
           name: SimpleLogUpload ${{ steps.get_version.outputs.VERSION }}
           draft: false
           prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}  # Explicitly specify the token
           files: |
             SimpleLogUpload-${{ steps.get_version.outputs.VERSION }}.apk
             app/build/outputs/apk/release/app-release-unsigned.apk
