@@ -100,7 +100,9 @@ public class PreferencesUtil {
     public static String getServerBaseUrl(Context context) {
         String address = getServerAddress(context);
         int port = getServerPort(context);
-        return "http://" + address + ":" + port;
+        // Use HTTPS for port 443 (standard HTTPS port)
+        String protocol = (port == 443) ? "https://" : "http://";
+        return protocol + address + ":" + port;
     }
     
     /**
