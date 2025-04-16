@@ -48,6 +48,32 @@ Note - this requires that you leverage SimpleFileUpload-Server
 - Upload history filtering and search
 - QR code generation for quick sharing
 
+## Development and Releases
+
+### Automated Releases with GitHub Actions
+This project uses GitHub Actions to automate the build and release process:
+
+1. **Creating a new release:**
+   - Make your changes and commit them to the repository
+   - Create and push a new tag following the format `vYY.MM.PATCH` (e.g., `v25.04.1`)
+   - GitHub Actions will automatically:
+     - Build the APK
+     - Sign it using the stored signing keys
+     - Create a GitHub release with the APK attached
+
+2. **Signing Configuration:**
+   Before the automated releases will work, you need to add the following secrets to your GitHub repository:
+   - `SIGNING_KEY`: Base64-encoded keystore file
+   - `KEY_ALIAS`: The alias used in the keystore
+   - `KEY_STORE_PASSWORD`: The keystore password
+   - `KEY_PASSWORD`: The key password
+
+3. **Release Versioning:**
+   We follow a `vYY.MM.PATCH` versioning scheme:
+   - `YY`: Year (e.g., 25 for 2025)
+   - `MM`: Month (e.g., 04 for April)
+   - `PATCH`: Incremental patch number for the month
+
 ## Feature Details
 
 ### Custom Upload Parameters
