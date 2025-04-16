@@ -22,6 +22,9 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+      
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
         with:
@@ -41,6 +44,10 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleRelease
 
+      # List available build tools to help with debugging
+      - name: List Android SDK build tools
+        run: ls -la $ANDROID_HOME/build-tools/
+
       - name: Sign APK
         uses: r0adkll/sign-android-release@v1
         id: sign_app
@@ -51,7 +58,7 @@ jobs:
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
         env:
-          BUILD_TOOLS_VERSION: "33.0.0"
+          BUILD_TOOLS_VERSION: "34.0.0"  # Updated to a version that's likely available
 
       - name: Get the version
         id: get_version
