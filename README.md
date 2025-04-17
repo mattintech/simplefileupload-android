@@ -48,6 +48,15 @@ Note - this requires that you leverage SimpleFileUpload-Server
 - Upload history filtering and search
 - QR code generation for quick sharing
 
+## Documentation
+
+Detailed documentation about specific features and processes can be found in the `docs/` directory:
+
+- [Project Documentation](PROJECT.md) - Project structure and documentation guidelines
+- [Chunked Upload](docs/CHUNKED_UPLOAD.md) - Implementation of chunked uploads for large files
+- [Large File Upload Analysis](docs/LARGE_UPLOAD.md) - Analysis and improvements for large file uploads
+- [Release Process](docs/RELEASE_PROCESS.md) - Detailed release process guidelines
+
 ## Development and Releases
 
 ### Automated Releases with GitHub Actions
