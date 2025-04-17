@@ -109,7 +109,7 @@ public class UploadController {
         String clientKey = PreferencesUtil.getClientKey(context);
         
         Log.d(TAG, "Using server URL: " + serverUrl);
-        Log.d(TAG, "Adding header '" + NetworkConstants.CLIENT_KEY_HEADER + "' with value: " + clientKey);
+        Log.d(TAG, "Adding header '" + NetworkConstants.CLIENT_KEY_HEADER + "' with value: " + "********");
         
         // Build request with client-key header
         Request request = new Request.Builder()
@@ -160,7 +160,7 @@ public class UploadController {
                     if (response.code() == 401 || response.code() == 403) {
                         errorMsg = "Authentication failed. Please check client key.";
                         Log.e(TAG, "Authentication error: " + response.code() + ", Body: " + errorBody);
-                        Log.e(TAG, "Header sent: " + NetworkConstants.CLIENT_KEY_HEADER + ": " + clientKey);
+                        Log.e(TAG, "Header sent: " + NetworkConstants.CLIENT_KEY_HEADER + ": ********");
                     } else {
                         errorMsg = "Upload failed, Response code: " + response.code();
                         Log.e(TAG, errorMsg + ", Body: " + errorBody);
