@@ -84,3 +84,13 @@
 - [x] Multi-Dumpstate upload 
 - [ ] Dumpstate cleanup after successful upload
 - [ ] Provide steps of how to collect a dumpstate and download the server
+
+## 🔄 Chunked Upload Implementation
+- [x] Implement basic chunked upload system for large files (>100MB)
+- [x] Add network type detection and adaptive settings for WiFi vs. Mobile
+- [x] Implement resume capability for interrupted uploads
+- [x] Add parallel chunk uploading for WiFi connections
+- [x] Create network state monitoring to handle connection changes
+- [x] Implement progressive backoff and retry strategy
+- [x] Add enhanced progress tracking for chunks
+- [x] Test on both WiFi and 5G with various file sizes
