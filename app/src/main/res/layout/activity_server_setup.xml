@@ -88,6 +88,27 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- QR Code Scan Button -->
+            <Button
+                android:id="@+id/scanQrButton"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/scan_qr_code_button"
+                android:drawableLeft="@drawable/ic_qr_scan"
+                android:drawablePadding="8dp"
+                android:paddingVertical="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/scan_qr_code_hint"
+                android:textAlignment="center"
+                android:textSize="12sp"
+                android:textStyle="italic" />
+
             <TextView
                 android:id="@+id/testConnectionInfo"
                 android:layout_width="match_parent"

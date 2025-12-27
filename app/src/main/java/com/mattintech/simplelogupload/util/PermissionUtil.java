@@ -24,7 +24,8 @@ public class PermissionUtil {
     
     public static final int REQUEST_MANAGE_EXTERNAL_STORAGE = 101;
     public static final int REQUEST_NOTIFICATION_PERMISSION = 102;
-    
+    public static final int REQUEST_CAMERA_PERMISSION = 103;
+
     /**
      * Checks if the app has notification permission
      * 
@@ -91,6 +92,33 @@ public class PermissionUtil {
                     activity.startActivityForResult(intent, REQUEST_MANAGE_EXTERNAL_STORAGE);
                 }
             }
+        }
+    }
+
+    /**
+     * Checks if the app has camera permission
+     *
+     * @param context The context
+     * @return true if the app has camera permission, false otherwise
+     */
+    public static boolean hasCameraPermission(Context context) {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * Requests camera permission
+     *
+     * @param activity The activity
+     */
+    public static void requestCameraPermission(Activity activity) {
+        if (!hasCameraPermission(activity)) {
+            Log.d(TAG, "Requesting camera permission");
+            ActivityCompat.requestPermissions(
+                    activity,
+                    new String[]{Manifest.permission.CAMERA},
+                    REQUEST_CAMERA_PERMISSION
+            );
         }
     }
 }
