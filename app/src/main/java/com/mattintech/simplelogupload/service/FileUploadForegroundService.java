@@ -24,7 +24,7 @@ import com.mattintech.simplelogupload.controller.FileController;
 import com.mattintech.simplelogupload.controller.UploadController;
 import com.mattintech.simplelogupload.model.UploadResult;
 import com.mattintech.simplelogupload.upload.UploadStrategySelector;
-import com.mattintech.simplelogupload.view.MainActivity;
+import com.mattintech.simplelogupload.ComposeMainActivity;
 
 import java.io.File;
 
@@ -198,7 +198,7 @@ public class FileUploadForegroundService extends Service {
      * @return The notification
      */
     private Notification createInitialNotification() {
-        Intent notificationIntent = new Intent(this, MainActivity.class);
+        Intent notificationIntent = new Intent(this, ComposeMainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, 
                 notificationIntent, PendingIntent.FLAG_IMMUTABLE);
 

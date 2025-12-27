@@ -49,52 +49,6 @@
             </intent-filter>
         </activity>
 
-        <!-- OLD: Legacy MainActivity (DEPRECATED - kept for reference only) -->
-        <activity
-            android:name=".view.MainActivity"
-            android:exported="false">
-            <!-- Removed LAUNCHER intent - now using ComposeMainActivity -->
-        </activity>
-
-        <!-- Upload History Activity -->
-        <activity
-            android:name=".view.UploadHistoryActivity"
-            android:label="Upload History"
-            android:parentActivityName=".view.MainActivity"
-            android:exported="false">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".view.MainActivity" />
-        </activity>
-        
-        <!-- Settings Activity -->
-        <activity
-            android:name=".view.SettingsActivity"
-            android:label="Settings"
-            android:parentActivityName=".view.MainActivity"
-            android:exported="false">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".view.MainActivity" />
-        </activity>
-        
-        <!-- Welcome Activity -->
-        <activity
-            android:name=".view.WelcomeActivity"
-            android:label="Welcome"
-            android:exported="false"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
-            
-        <!-- Server Setup Activity -->
-        <activity
-            android:name=".view.ServerSetupActivity"
-            android:label="Server Setup"
-            android:exported="false">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".view.WelcomeActivity" />
-        </activity>
-
         <!-- File Upload Foreground Service -->
         <service
             android:name=".service.FileUploadForegroundService"
