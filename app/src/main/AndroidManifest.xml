@@ -22,22 +22,25 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">
         
-        <!-- Main Activity -->
+        <!-- NEW: Compose Main Activity (LAUNCHER) -->
         <activity
-            android:name=".view.MainActivity"
-            android:exported="true">
+            android:name=".ComposeMainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+
+            <!-- LAUNCHER - App starts here -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            
+
             <!-- Share intent filter for files -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
-            
+
             <!-- Share intent filter for multiple files -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
@@ -45,7 +48,14 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
-        
+
+        <!-- OLD: Legacy MainActivity (DEPRECATED - kept for reference only) -->
+        <activity
+            android:name=".view.MainActivity"
+            android:exported="false">
+            <!-- Removed LAUNCHER intent - now using ComposeMainActivity -->
+        </activity>
+
         <!-- Upload History Activity -->
         <activity
             android:name=".view.UploadHistoryActivity"
