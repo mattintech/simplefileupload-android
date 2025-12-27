@@ -1,6 +1,10 @@
 package com.mattintech.simplelogupload.ui.screens.tabs
 
-import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mattintech.simplelogupload.ui.components.UploadParamsDialog
 import com.mattintech.simplelogupload.ui.components.UploadResultDialog
+import com.mattintech.simplelogupload.util.PermissionUtil
 import com.mattintech.simplelogupload.viewmodel.MainViewModel
 
 /**
@@ -31,6 +36,7 @@ fun GeneralUploadTab(
     viewModel: MainViewModel
 ) {
     val context = LocalContext.current
+    val activity = context as Activity
     val uiState by viewModel.uiState.collectAsState()
 
     // File picker launcher
@@ -42,16 +48,17 @@ fun GeneralUploadTab(
         }
     }
 
-    // Storage permission launcher
-    val storagePermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
+    // Settings launcher for when user returns from granting all files access
+    val settingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        // Check if permission was granted after returning from settings
+        if (PermissionUtil.hasAllFilesAccessPermission()) {
             filePickerLauncher.launch("*/*")
         } else {
             Toast.makeText(
                 context,
-                "Storage permission is required to select files",
+                "All files access permission is required to select files",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -102,7 +109,25 @@ fun GeneralUploadTab(
         // Select file button
         Button(
             onClick = {
-                storagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                if (PermissionUtil.hasAllFilesAccessPermission()) {
+                    filePickerLauncher.launch("*/*")
+                } else {
+                    // Request all files access permission by opening settings
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        try {
+                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                            intent.data = Uri.parse("package:" + context.packageName)
+                            settingsLauncher.launch(intent)
+                        } catch (e: Exception) {
+                            // Fallback to general all files access settings
+                            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                            settingsLauncher.launch(intent)
+                        }
+                    } else {
+                        // On older Android versions, just launch file picker
+                        filePickerLauncher.launch("*/*")
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = !uiState.isLoading
