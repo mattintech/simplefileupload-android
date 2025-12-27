@@ -67,6 +67,18 @@
                 android:inputType="textPassword" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- QR Code Scan Button -->
+        <Button
+            android:id="@+id/scanQrButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/scan_qr_code_button"
+            android:drawableLeft="@drawable/ic_qr_scan"
+            android:drawablePadding="8dp" />
+
         <Button
             android:id="@+id/saveSettingsButton"
             android:layout_width="match_parent"

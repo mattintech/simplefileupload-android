@@ -67,4 +67,13 @@
     <string name="expiry_time_note">Maximum 24 hours (1 day)</string>
     <string name="cancel_button">Cancel</string>
     <string name="upload_button">Upload</string>
+
+    <!-- QR Code Scanning -->
+    <string name="scan_qr_code_button">Scan QR Code</string>
+    <string name="scan_qr_code_hint">Scan a QR code from your server admin panel to auto-fill settings</string>
+    <string name="qr_scan_success">Configuration loaded from QR code</string>
+    <string name="qr_scan_cancelled">QR code scan cancelled</string>
+    <string name="qr_scan_error">QR code error: %1$s</string>
+    <string name="camera_permission_required">Camera permission is required to scan QR codes</string>
+    <string name="camera_permission_denied">Camera permission denied. Please enable it in Settings to scan QR codes.</string>
 </resources>

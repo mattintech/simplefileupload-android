@@ -23,6 +23,7 @@ import com.mattintech.simplelogupload.constant.NetworkConstants;
 import com.mattintech.simplelogupload.controller.FileController;
 import com.mattintech.simplelogupload.controller.UploadController;
 import com.mattintech.simplelogupload.model.UploadResult;
+import com.mattintech.simplelogupload.upload.UploadStrategySelector;
 import com.mattintech.simplelogupload.view.MainActivity;
 
 import java.io.File;
@@ -92,9 +93,17 @@ public class FileUploadForegroundService extends Service {
         }
 
         // Create a notification and run the service in the foreground
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             // For Android 14+ (API 34+)
-            startForeground(NOTIFICATION_ID, createInitialNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            try {
+                Log.d(TAG, "Starting foreground service with DATA_SYNC type");
+                int dataSync = 1; // ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC value is 1
+                startForeground(NOTIFICATION_ID, createInitialNotification(), dataSync);
+            } catch (Exception e) {
+                Log.e(TAG, "Error starting foreground service with type", e);
+                stopSelf();
+                return START_NOT_STICKY;
+            }
         } else {
             // For Android 13 and below
             startForeground(NOTIFICATION_ID, createInitialNotification());
@@ -153,7 +162,17 @@ public class FileUploadForegroundService extends Service {
         // Update notification to show uploading
         updateNotification("Uploading " + file.getName() + "...");
         
-        // Upload the file
+        // Log network information
+        String networkType = UploadStrategySelector.getNetworkTypeName(this);
+        boolean isWifi = UploadStrategySelector.isWifiConnection(this);
+        boolean useChunked = UploadStrategySelector.shouldUseChunkedUpload(this, file);
+        
+        Log.d(TAG, "Starting upload - Network: " + networkType + ", Chunked: " + useChunked);
+        
+        // Update notification with network info
+        updateNotification("Uploading on " + networkType + 
+                (useChunked ? " (chunked)" : "") + "...");
+        
         uploadController.uploadFile(file, maxDownloads, expiryHours)
                 .thenAccept(result -> {
                     if (result.isSuccess()) {

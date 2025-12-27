@@ -8,10 +8,24 @@ public class NetworkConstants {
     // via PreferencesUtil to allow for customization
     public static final String SERVER_URL_BASE = "/upload";
     
+    // Chunked upload endpoints (relative to server base URL)
+    public static final String CHUNKED_UPLOAD_START = "/upload/start";
+    public static final String CHUNKED_UPLOAD_CHUNK = "/upload/chunk";
+    public static final String CHUNKED_UPLOAD_COMPLETE = "/upload/complete";
+    
     // Upload parameters
     public static final String PARAM_FILE = "file";
     public static final String PARAM_MAX_DOWNLOADS = "max_downloads";
     public static final String PARAM_EXPIRY_HOURS = "expiry_hours";
+    
+    // Chunked upload parameters
+    public static final String PARAM_UPLOAD_ID = "upload_id";
+    public static final String PARAM_CHUNK_INDEX = "chunk_index";
+    public static final String PARAM_TOTAL_CHUNKS = "total_chunks";
+    public static final String PARAM_CHUNK = "chunk";
+    public static final String PARAM_FILENAME = "filename";
+    public static final String PARAM_FILESIZE = "filesize";
+    public static final String PARAM_CHUNK_SIZE = "chunk_size";
     
     // Authentication
     public static final String CLIENT_KEY_HEADER = "X-Client-Key";
