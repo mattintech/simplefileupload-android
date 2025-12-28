@@ -14,6 +14,8 @@ import com.mattintech.simplelogupload.constant.AppConstants
 import com.mattintech.simplelogupload.controller.FileController
 import com.mattintech.simplelogupload.controller.UploadController
 import com.mattintech.simplelogupload.model.UploadResult
+import com.mattintech.simplelogupload.service.FileUploadForegroundService
+import com.mattintech.simplelogupload.upload.UploadStrategySelector
 import com.mattintech.simplelogupload.util.PreferencesUtil
 import com.mattintech.simplelogupload.util.ZipUtil
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,9 @@ import java.util.*
  */
 data class MainUiState(
     val isLoading: Boolean = false,
+    val isPaused: Boolean = false,
+    val isChunkedUpload: Boolean = false,
+    val uploadStatusMessage: String? = null,
     val selectedFile: File? = null,
     val selectedFileName: String? = null,
     val dumpstateFiles: List<File> = emptyList(),
@@ -150,6 +155,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             totalBytes = 0
                         )
                     }
+                    AppConstants.ACTION_UPLOAD_PAUSED -> {
+                        Log.d(TAG, "Upload paused")
+                        _uiState.value = _uiState.value.copy(
+                            isPaused = true,
+                            uploadStatusMessage = "Upload paused"
+                        )
+                    }
+                    AppConstants.ACTION_UPLOAD_RESUMED -> {
+                        Log.d(TAG, "Upload resumed")
+                        _uiState.value = _uiState.value.copy(
+                            isPaused = false,
+                            uploadStatusMessage = "Resuming upload..."
+                        )
+                    }
+                    AppConstants.ACTION_UPLOAD_CANCELLED -> {
+                        Log.d(TAG, "Upload cancelled")
+
+                        // Clean up temporary zip file if it exists
+                        currentUploadTempZipFile?.let { tempFile ->
+                            if (tempFile.exists()) {
+                                val deleted = tempFile.delete()
+                                Log.d(TAG, "Cleaned up temp zip file after cancellation: ${tempFile.name}, deleted: $deleted")
+                            }
+                            currentUploadTempZipFile = null
+                        }
+
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            isPaused = false,
+                            uploadProgress = 0,
+                            bytesUploaded = 0,
+                            totalBytes = 0,
+                            uploadStatusMessage = "Upload cancelled"
+                        )
+                    }
                 }
             }
         }
@@ -158,6 +198,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             addAction(AppConstants.ACTION_UPLOAD_PROGRESS)
             addAction(AppConstants.ACTION_UPLOAD_COMPLETE)
             addAction(AppConstants.ACTION_UPLOAD_ERROR)
+            addAction(AppConstants.ACTION_UPLOAD_PAUSED)
+            addAction(AppConstants.ACTION_UPLOAD_RESUMED)
+            addAction(AppConstants.ACTION_UPLOAD_CANCELLED)
         }
 
         LocalBroadcastManager.getInstance(getApplication())
@@ -288,8 +331,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             currentUploadMaxDownloads = maxDownloads
             currentUploadExpiryHours = expiryHours
 
+            // Determine if this will be a chunked upload
+            val isChunked = UploadStrategySelector.shouldUseChunkedUpload(getApplication(), file)
+            Log.d(TAG, "Upload will use ${if (isChunked) "chunked" else "standard"} strategy")
+
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
+                isChunkedUpload = isChunked,
+                isPaused = false,
+                uploadStatusMessage = null,
                 showUploadParamsDialog = false
             )
 
@@ -358,6 +408,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 currentUploadMaxDownloads = maxDownloads
                 currentUploadExpiryHours = expiryHours
 
+                // Determine if this will be a chunked upload
+                val isChunked = UploadStrategySelector.shouldUseChunkedUpload(getApplication(), fileToUpload)
+                Log.d(TAG, "Upload will use ${if (isChunked) "chunked" else "standard"} strategy")
+
+                // Update state with upload type
+                _uiState.value = _uiState.value.copy(
+                    isChunkedUpload = isChunked,
+                    isPaused = false,
+                    uploadStatusMessage = null
+                )
+
                 uploadController.startUploadService(fileToUpload, maxDownloads, expiryHours)
             } catch (e: Exception) {
                 Log.e(TAG, "Error uploading dumpstate files", e)
@@ -376,6 +437,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
+    }
+
+    /**
+     * Pause the current upload
+     */
+    fun pauseUpload() {
+        Log.d(TAG, "Pause upload requested")
+        val intent = Intent(getApplication(), FileUploadForegroundService::class.java).apply {
+            action = AppConstants.ACTION_PAUSE_UPLOAD
+        }
+        getApplication<Application>().startService(intent)
+    }
+
+    /**
+     * Resume the paused upload
+     */
+    fun resumeUpload() {
+        Log.d(TAG, "Resume upload requested")
+        val intent = Intent(getApplication(), FileUploadForegroundService::class.java).apply {
+            action = AppConstants.ACTION_RESUME_UPLOAD
+        }
+        getApplication<Application>().startService(intent)
+    }
+
+    /**
+     * Cancel the current upload
+     */
+    fun cancelUpload() {
+        Log.d(TAG, "Cancel upload requested")
+        val intent = Intent(getApplication(), FileUploadForegroundService::class.java).apply {
+            action = AppConstants.ACTION_CANCEL_UPLOAD
+        }
+        getApplication<Application>().startService(intent)
     }
 
     override fun onCleared() {

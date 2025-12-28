@@ -66,6 +66,15 @@ class FileUploadForegroundService : Service() {
     private var notificationBuilder: NotificationCompat.Builder? = null
     private var lastProgressUpdate: Long = 0
 
+    // Upload state tracking
+    private var currentUploadManager: ChunkedUploadManager? = null
+    private var currentStandardUploadCall: Call? = null
+    private var uploadState: UploadState = UploadState.IDLE
+
+    enum class UploadState {
+        IDLE, UPLOADING, PAUSED, CANCELLED
+    }
+
     override fun onCreate() {
         super.onCreate()
         uploadController = UploadController(this)
@@ -81,6 +90,22 @@ class FileUploadForegroundService : Service() {
             Log.e(TAG, "Intent is null")
             stopSelf()
             return START_NOT_STICKY
+        }
+
+        // Handle control actions
+        when (intent.action) {
+            AppConstants.ACTION_PAUSE_UPLOAD -> {
+                handlePauseUpload()
+                return START_STICKY
+            }
+            AppConstants.ACTION_RESUME_UPLOAD -> {
+                handleResumeUpload()
+                return START_STICKY
+            }
+            AppConstants.ACTION_CANCEL_UPLOAD -> {
+                handleCancelUpload()
+                return START_NOT_STICKY
+            }
         }
 
         Log.d(TAG, "Intent received, extracting parameters...")
@@ -260,6 +285,10 @@ class FileUploadForegroundService : Service() {
         // Create chunked upload manager directly
         val uploadManager = ChunkedUploadManager(this, file, maxDownloads, expiryHours)
 
+        // Store reference for pause/resume/cancel control
+        currentUploadManager = uploadManager
+        uploadState = UploadState.UPLOADING
+
         // Set progress listener with direct notification updates
         uploadManager.setProgressListener(object : ChunkedUploadManager.UploadProgressListener {
             override fun onProgress(bytesUploaded: Long, totalBytes: Long, percentComplete: Int) {
@@ -288,6 +317,10 @@ class FileUploadForegroundService : Service() {
             override fun onUploadComplete(result: UploadResult) {
                 Log.d(TAG, "Chunked upload complete: $result")
 
+                // Clear upload reference
+                currentUploadManager = null
+                uploadState = UploadState.IDLE
+
                 // Save to history directly if successful
                 if (result.isSuccess) {
                     saveToHistory(result)
@@ -298,17 +331,22 @@ class FileUploadForegroundService : Service() {
 
             override fun onError(error: String) {
                 Log.e(TAG, "Chunked upload error: $error")
+
+                // Clear upload reference
+                currentUploadManager = null
+                uploadState = UploadState.IDLE
+
                 future.complete(UploadResult(error))
             }
 
             override fun onPaused() {
                 Log.d(TAG, "Chunked upload paused")
-                updateNotification("Upload paused", -1, 100)
+                // Note: updateNotification and sendPausedBroadcast are called in handlePauseUpload()
             }
 
             override fun onResumed() {
                 Log.d(TAG, "Chunked upload resumed")
-                updateNotification("Resuming upload...", -1, 100)
+                // Note: updateNotification and sendResumedBroadcast are called in handleResumeUpload()
             }
         })
 
@@ -372,13 +410,27 @@ class FileUploadForegroundService : Service() {
         // Show initial progress
         updateNotification("Uploading ${file.name}...", 0, 100)
 
-        client.newCall(request).enqueue(object : Callback {
+        // Create call and store reference for cancellation
+        val call = client.newCall(request)
+        currentStandardUploadCall = call
+        uploadState = UploadState.UPLOADING
+
+        call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Log.e(TAG, "Upload failed", e)
+
+                // Clear upload reference
+                currentStandardUploadCall = null
+                uploadState = UploadState.IDLE
+
                 future.complete(UploadResult("Upload failed: ${e.message}"))
             }
 
             override fun onResponse(call: Call, response: Response) {
+                // Clear upload reference
+                currentStandardUploadCall = null
+                uploadState = UploadState.IDLE
+
                 response.use {
                     if (response.isSuccessful) {
                         try {
@@ -482,6 +534,7 @@ class FileUploadForegroundService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true) // Don't alert on every progress update
             .setPriority(NotificationCompat.PRIORITY_HIGH) // High priority for better visibility
+            .addAction(createCancelAction()) // Add cancel action from the start
             .apply {
                 // Force immediate notification display on Android 14+ (prevents system delay)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -506,18 +559,49 @@ class FileUploadForegroundService : Service() {
 
         Log.d(TAG, "Updating notification: $status (progress: $progress/$max)")
 
+        // Ignore updates if upload is cancelled (unless this IS the cancellation message)
+        if (uploadState == UploadState.CANCELLED && !isComplete) {
+            Log.d(TAG, "Ignoring notification update because upload is cancelled")
+            return
+        }
+
         builder.setContentText(status)
 
-        if (progress >= 0) {
+        if (progress >= 0 && !isComplete) {
             // Determinate progress
             builder.setProgress(max, progress, false)
-        } else {
+        } else if (!isComplete) {
             // Indeterminate progress
             builder.setProgress(max, 0, true)
         }
 
-        // When complete, make notification dismissible and remove progress bar
-        if (isComplete) {
+        // Add action buttons based on upload state
+        if (!isComplete && uploadState != UploadState.CANCELLED) {
+            builder.clearActions() // Remove old actions
+
+            when (uploadState) {
+                UploadState.PAUSED -> {
+                    // Show Resume and Cancel buttons
+                    builder.addAction(createResumeAction())
+                    builder.addAction(createCancelAction())
+                }
+                UploadState.UPLOADING -> {
+                    // Show Pause (if chunked) and Cancel buttons
+                    if (currentUploadManager != null) {
+                        builder.addAction(createPauseAction())
+                    }
+                    builder.addAction(createCancelAction())
+                }
+                else -> {
+                    // For IDLE or other states, just show Cancel
+                    builder.addAction(createCancelAction())
+                }
+            }
+        }
+
+        // When complete or cancelled, make notification dismissible and remove progress bar
+        if (isComplete || uploadState == UploadState.CANCELLED) {
+            builder.clearActions() // Remove all actions
             builder.setOngoing(false)
                 .setProgress(0, 0, false) // Remove progress bar
                 .setAutoCancel(true) // Allow swipe to dismiss
@@ -610,5 +694,183 @@ class FileUploadForegroundService : Service() {
 
         // Send local broadcast to the ViewModel
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    }
+
+    /**
+     * Send a broadcast when upload is paused
+     */
+    private fun sendPausedBroadcast() {
+        Log.d(TAG, "Sending paused broadcast")
+        val intent = Intent(AppConstants.ACTION_UPLOAD_PAUSED)
+        sendBroadcast(intent)
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    }
+
+    /**
+     * Send a broadcast when upload is resumed
+     */
+    private fun sendResumedBroadcast() {
+        Log.d(TAG, "Sending resumed broadcast")
+        val intent = Intent(AppConstants.ACTION_UPLOAD_RESUMED)
+        sendBroadcast(intent)
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    }
+
+    /**
+     * Send a broadcast when upload is cancelled
+     */
+    private fun sendCancelledBroadcast() {
+        Log.d(TAG, "Sending cancelled broadcast")
+        val intent = Intent(AppConstants.ACTION_UPLOAD_CANCELLED)
+        sendBroadcast(intent)
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    }
+
+    /**
+     * Create a pause action for the notification
+     */
+    private fun createPauseAction(): NotificationCompat.Action {
+        val pauseIntent = Intent(this, FileUploadForegroundService::class.java).apply {
+            action = AppConstants.ACTION_PAUSE_UPLOAD
+        }
+        val pausePendingIntent = PendingIntent.getService(
+            this,
+            1,
+            pauseIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        return NotificationCompat.Action.Builder(
+            android.R.drawable.ic_media_pause,
+            "Pause",
+            pausePendingIntent
+        ).build()
+    }
+
+    /**
+     * Create a resume action for the notification
+     */
+    private fun createResumeAction(): NotificationCompat.Action {
+        val resumeIntent = Intent(this, FileUploadForegroundService::class.java).apply {
+            action = AppConstants.ACTION_RESUME_UPLOAD
+        }
+        val resumePendingIntent = PendingIntent.getService(
+            this,
+            2,
+            resumeIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        return NotificationCompat.Action.Builder(
+            android.R.drawable.ic_media_play,
+            "Resume",
+            resumePendingIntent
+        ).build()
+    }
+
+    /**
+     * Create a cancel action for the notification
+     */
+    private fun createCancelAction(): NotificationCompat.Action {
+        val cancelIntent = Intent(this, FileUploadForegroundService::class.java).apply {
+            action = AppConstants.ACTION_CANCEL_UPLOAD
+        }
+        val cancelPendingIntent = PendingIntent.getService(
+            this,
+            3,
+            cancelIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        return NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_close_clear_cancel,
+            "Cancel",
+            cancelPendingIntent
+        ).build()
+    }
+
+    /**
+     * Handle pause upload request
+     */
+    private fun handlePauseUpload() {
+        Log.d(TAG, "Handling pause upload request")
+
+        if (uploadState != UploadState.UPLOADING) {
+            Log.w(TAG, "Cannot pause: upload not in progress (state: $uploadState)")
+            return
+        }
+
+        uploadState = UploadState.PAUSED
+
+        currentUploadManager?.let { manager ->
+            manager.pauseUpload()
+            updateNotification("Upload paused", -1, 100)
+            sendPausedBroadcast()
+            Log.d(TAG, "Chunked upload paused successfully")
+        } ?: run {
+            Log.w(TAG, "Cannot pause standard upload (not supported)")
+            updateNotification("Cannot pause standard upload", -1, 100)
+        }
+    }
+
+    /**
+     * Handle resume upload request
+     */
+    private fun handleResumeUpload() {
+        Log.d(TAG, "Handling resume upload request")
+
+        if (uploadState != UploadState.PAUSED) {
+            Log.w(TAG, "Cannot resume: upload not paused (state: $uploadState)")
+            return
+        }
+
+        uploadState = UploadState.UPLOADING
+
+        currentUploadManager?.let { manager ->
+            manager.resumeUpload()
+            updateNotification("Resuming upload...", -1, 100)
+            sendResumedBroadcast()
+            Log.d(TAG, "Chunked upload resumed successfully")
+        }
+    }
+
+    /**
+     * Handle cancel upload request
+     */
+    private fun handleCancelUpload() {
+        Log.d(TAG, "Handling cancel upload request")
+
+        uploadState = UploadState.CANCELLED
+
+        // Cancel chunked upload
+        currentUploadManager?.let { manager ->
+            manager.cancelUpload()
+            currentUploadManager = null
+            Log.d(TAG, "Cancelled chunked upload")
+        }
+
+        // Cancel standard upload
+        currentStandardUploadCall?.let { call ->
+            call.cancel()
+            currentStandardUploadCall = null
+            Log.d(TAG, "Cancelled standard upload")
+        }
+
+        // Clear upload in progress flag
+        PreferencesUtil.setUploadInProgress(this, false, null)
+
+        // Send cancelled broadcast
+        sendCancelledBroadcast()
+
+        // Update notification
+        updateNotification("Upload cancelled", -1, 100, isComplete = true)
+
+        // Stop service after a short delay
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_DETACH)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(false)
+            }
+            stopSelf()
+        }, 500)
     }
 }
