@@ -58,6 +58,9 @@ fun SettingsScreen(
     var askBeforeUpload by remember {
         mutableStateOf(PreferencesUtil.getAskBeforeUpload(context))
     }
+    var enableParallelUploads by remember {
+        mutableStateOf(PreferencesUtil.isParallelUploadsEnabled(context))
+    }
     var clientKeyVisible by remember { mutableStateOf(false) }
 
     var serverAddressError by remember { mutableStateOf<String?>(null) }
@@ -176,6 +179,7 @@ fun SettingsScreen(
         PreferencesUtil.setDefaultMaxDownloads(context, maxDl!!)
         PreferencesUtil.setDefaultExpiryHours(context, expiry!!)
         PreferencesUtil.setAskBeforeUpload(context, askBeforeUpload)
+        PreferencesUtil.setParallelUploadsEnabled(context, enableParallelUploads)
 
         Toast.makeText(context, "Settings saved successfully!", Toast.LENGTH_SHORT).show()
         onNavigateBack()
@@ -189,6 +193,7 @@ fun SettingsScreen(
         defaultMaxDownloads = PreferencesUtil.getDefaultMaxDownloads(context).toString()
         defaultExpiryHours = PreferencesUtil.getDefaultExpiryHours(context).toString()
         askBeforeUpload = PreferencesUtil.getAskBeforeUpload(context)
+        enableParallelUploads = PreferencesUtil.isParallelUploadsEnabled(context)
 
         // Clear errors
         serverAddressError = null
@@ -377,6 +382,44 @@ fun SettingsScreen(
                     Switch(
                         checked = askBeforeUpload,
                         onCheckedChange = { askBeforeUpload = it }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Parallel Uploads Switch
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Upload Mode",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (enableParallelUploads)
+                                "Parallel: 2 chunks simultaneously (Experimental)"
+                            else
+                                "Sequential: One chunk at a time (Recommended)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = enableParallelUploads,
+                        onCheckedChange = { enableParallelUploads = it }
                     )
                 }
             }

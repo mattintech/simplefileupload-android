@@ -48,12 +48,12 @@ public class ChunkedUploadManager {
 
     // Chunk size configuration
     private static final int WIFI_CHUNK_SIZE = 10 * 1024 * 1024; // 10MB for WiFi
-    private static final int MOBILE_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB for mobile networks
+    private static final int MOBILE_CHUNK_SIZE = 4 * 1024 * 1024; // 4MB for mobile networks (increased from 2MB)
     private static final int DEFAULT_CHUNK_SIZE = WIFI_CHUNK_SIZE;
 
     // Max parallel uploads
     private static final int WIFI_MAX_PARALLEL = 3;
-    private static final int MOBILE_MAX_PARALLEL = 1;
+    private static final int MOBILE_MAX_PARALLEL = 2; // 2 parallel chunks on mobile (testing with nginx config updates)
 
     // Retry configuration
     private static final int MAX_RETRY_ATTEMPTS = 3;
@@ -118,15 +118,21 @@ public class ChunkedUploadManager {
 
         // Set up connectivity manager for network monitoring
         this.connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        
+
         // Determine initial connection type
         detectConnectionType();
-        
+
         // Configure chunk size based on connection type
         this.chunkSize = isWifiConnection ? WIFI_CHUNK_SIZE : MOBILE_CHUNK_SIZE;
-        
-        // Configure max parallel uploads based on connection type
-        this.maxParallelUploads = isWifiConnection ? WIFI_MAX_PARALLEL : MOBILE_MAX_PARALLEL;
+
+        // Configure max parallel uploads based on connection type and user preference
+        boolean parallelEnabled = PreferencesUtil.isParallelUploadsEnabled(context);
+        if (isWifiConnection) {
+            this.maxParallelUploads = WIFI_MAX_PARALLEL;
+        } else {
+            // On mobile, use parallel uploads only if enabled in settings
+            this.maxParallelUploads = parallelEnabled ? MOBILE_MAX_PARALLEL : 1;
+        }
         
         // Calculate total chunks
         this.totalChunks = (int) Math.ceil((double) file.length() / chunkSize);
@@ -139,8 +145,9 @@ public class ChunkedUploadManager {
         
         Log.d(TAG, "Created chunked upload manager for file: " + file.getName());
         Log.d(TAG, "Total size: " + totalBytes + " bytes, Chunks: " + totalChunks);
-        Log.d(TAG, "Connection type: " + (isWifiConnection ? "WiFi" : "Mobile") + 
-                ", Chunk size: " + chunkSize + " bytes");
+        Log.d(TAG, "Connection type: " + (isWifiConnection ? "WiFi" : "Mobile") +
+                ", Chunk size: " + chunkSize + " bytes" +
+                ", Parallel uploads: " + maxParallelUploads + (parallelEnabled ? " (enabled)" : " (disabled)"));
     }
 
     /**
@@ -661,33 +668,40 @@ public class ChunkedUploadManager {
         // Verify all chunks are uploaded before finalizing
         boolean allChunksUploaded = true;
         Set<Integer> missingChunks = new HashSet<>();
-        
+
         for (int i = 0; i < totalChunks; i++) {
             if (!completedChunks.contains(i)) {
                 missingChunks.add(i);
                 allChunksUploaded = false;
             }
         }
-        
+
         if (!allChunksUploaded) {
             Log.e(TAG, "Cannot finalize: missing chunks " + missingChunks);
             future.complete(new UploadResult("Cannot finalize: missing chunks " + missingChunks));
             return future;
         }
-        
+
         // Get server URL and client key from preferences
         String serverBaseUrl = PreferencesUtil.getServerBaseUrl(context);
         String clientKey = PreferencesUtil.getClientKey(context);
-        
+
         // Before finalizing, verify with the server which chunks it has received
         verifyChunksWithServer()
             .thenAccept(serverMissingChunks -> {
                 if (!serverMissingChunks.isEmpty()) {
                     Log.e(TAG, "Server missing chunks: " + serverMissingChunks + ", reuploading missing chunks");
-                    
+
                     // Reset these chunks as not uploaded so they'll be retried
+                    // Also subtract their bytes from uploadedBytes to prevent progress > 100%
                     for (Integer chunkIndex : serverMissingChunks) {
                         completedChunks.remove(chunkIndex);
+
+                        // Calculate chunk size and subtract from uploaded bytes
+                        long start = (long) chunkIndex * chunkSize;
+                        long end = Math.min(start + chunkSize, file.length());
+                        long chunkBytes = end - start;
+                        uploadedBytes.addAndGet(-chunkBytes);
                     }
                     
                     // Retry uploading the missing chunks
@@ -802,12 +816,19 @@ public class ChunkedUploadManager {
                                 
                                 // Automatically retry these specific chunks
                                 if (!missingChunks.isEmpty()) {
-                                    Log.d(TAG, "Server reported missing chunks: " + missingChunks + 
+                                    Log.d(TAG, "Server reported missing chunks: " + missingChunks +
                                           ". Will retry these chunks specifically.");
-                                    
+
                                     // Remove these chunks from completedChunks
+                                    // Also subtract their bytes from uploadedBytes to prevent progress > 100%
                                     for (Integer chunkIndex : missingChunks) {
                                         completedChunks.remove(chunkIndex);
+
+                                        // Calculate chunk size and subtract from uploaded bytes
+                                        long start = (long) chunkIndex * chunkSize;
+                                        long end = Math.min(start + chunkSize, file.length());
+                                        long chunkBytes = end - start;
+                                        uploadedBytes.addAndGet(-chunkBytes);
                                     }
                                     
                                     retrySpecificChunks(missingChunks)

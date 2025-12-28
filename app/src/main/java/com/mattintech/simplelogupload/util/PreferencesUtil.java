@@ -20,6 +20,7 @@ public class PreferencesUtil {
     public static final String KEY_ASK_BEFORE_UPLOAD = "ask_before_upload";
     public static final String KEY_UPLOAD_IN_PROGRESS = "upload_in_progress";
     public static final String KEY_UPLOAD_FILE_NAME = "upload_file_name";
+    public static final String KEY_ENABLE_PARALLEL_UPLOADS = "enable_parallel_uploads";
 
     // Default values
     private static final String DEFAULT_SERVER_ADDRESS = "";
@@ -30,6 +31,7 @@ public class PreferencesUtil {
     private static final int DEFAULT_MAX_DOWNLOADS = 5;
     private static final int DEFAULT_EXPIRY_HOURS = 24;
     private static final boolean DEFAULT_ASK_BEFORE_UPLOAD = true;
+    private static final boolean DEFAULT_ENABLE_PARALLEL_UPLOADS = false;
     
     /**
      * Get the shared preferences instance
@@ -140,6 +142,7 @@ public class PreferencesUtil {
         editor.putInt(KEY_DEFAULT_MAX_DOWNLOADS, DEFAULT_MAX_DOWNLOADS);
         editor.putInt(KEY_DEFAULT_EXPIRY_HOURS, DEFAULT_EXPIRY_HOURS);
         editor.putBoolean(KEY_ASK_BEFORE_UPLOAD, DEFAULT_ASK_BEFORE_UPLOAD);
+        editor.putBoolean(KEY_ENABLE_PARALLEL_UPLOADS, DEFAULT_ENABLE_PARALLEL_UPLOADS);
         editor.apply();
     }
     
@@ -294,5 +297,25 @@ public class PreferencesUtil {
      */
     public static String getUploadFileName(Context context) {
         return getPreferences(context).getString(KEY_UPLOAD_FILE_NAME, null);
+    }
+
+    /**
+     * Get the parallel uploads enabled preference
+     *
+     * @param context The application context
+     * @return True if parallel uploads are enabled, false otherwise
+     */
+    public static boolean isParallelUploadsEnabled(Context context) {
+        return getPreferences(context).getBoolean(KEY_ENABLE_PARALLEL_UPLOADS, DEFAULT_ENABLE_PARALLEL_UPLOADS);
+    }
+
+    /**
+     * Set the parallel uploads enabled preference
+     *
+     * @param context The application context
+     * @param enabled True to enable parallel uploads, false otherwise
+     */
+    public static void setParallelUploadsEnabled(Context context, boolean enabled) {
+        getPreferences(context).edit().putBoolean(KEY_ENABLE_PARALLEL_UPLOADS, enabled).apply();
     }
 }
