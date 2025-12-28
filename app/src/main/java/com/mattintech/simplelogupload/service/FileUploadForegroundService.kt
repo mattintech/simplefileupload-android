@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.app.Service.STOP_FOREGROUND_DETACH
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -141,6 +142,9 @@ class FileUploadForegroundService : Service() {
             Log.d(TAG, "Foreground service started successfully")
         }
 
+        // Mark upload as in progress
+        PreferencesUtil.setUploadInProgress(this, true, file.name)
+
         // Prepare file for upload
         Log.d(TAG, "Starting file preparation...")
         FileController.prepareFileForUpload(file, object : FileController.FilePrepareCallback {
@@ -157,6 +161,7 @@ class FileUploadForegroundService : Service() {
 
             override fun onError(e: Exception) {
                 Log.e(TAG, "Error preparing file", e)
+                PreferencesUtil.setUploadInProgress(this@FileUploadForegroundService, false, null)
                 sendErrorBroadcast("Error preparing file: ${e.message}")
                 stopSelf()
             }
@@ -196,7 +201,7 @@ class FileUploadForegroundService : Service() {
         uploadFuture.thenAccept { result ->
             if (result.isSuccess) {
                 Log.d(TAG, "Upload successful! Code: ${result.code}")
-                updateNotification("Upload complete!", 100, 100, isComplete = true)
+                updateNotificationComplete("Upload complete! Code: ${result.code}", result.code)
                 sendSuccessBroadcast(result.code)
             } else {
                 Log.e(TAG, "Upload failed: ${result.error}")
@@ -204,19 +209,37 @@ class FileUploadForegroundService : Service() {
                 sendErrorBroadcast(result.error)
             }
 
-            // Give user a moment to see the final status, then stop service
+            // Clear upload in progress flag
+            PreferencesUtil.setUploadInProgress(this, false, null)
+
+            // Detach notification from foreground service so it persists after service stops
             Handler(Looper.getMainLooper()).postDelayed({
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    stopForeground(STOP_FOREGROUND_DETACH)
+                } else {
+                    @Suppress("DEPRECATION")
+                    stopForeground(false) // Keep notification visible
+                }
                 stopSelf()
-            }, 3000)
+            }, 500)
         }.exceptionally { ex ->
             Log.e(TAG, "Exception during upload", ex)
             updateNotification("Upload error: ${ex.message}", -1, 100, isComplete = true)
             sendErrorBroadcast("Error during upload: ${ex.message}")
 
-            // Give user a moment to see the error, then stop service
+            // Clear upload in progress flag
+            PreferencesUtil.setUploadInProgress(this, false, null)
+
+            // Stop service after a short delay
             Handler(Looper.getMainLooper()).postDelayed({
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    stopForeground(STOP_FOREGROUND_DETACH)
+                } else {
+                    @Suppress("DEPRECATION")
+                    stopForeground(false)
+                }
                 stopSelf()
-            }, 3000)
+            }, 500)
             null
         }
     }
@@ -499,6 +522,27 @@ class FileUploadForegroundService : Service() {
                 .setProgress(0, 0, false) // Remove progress bar
                 .setAutoCancel(true) // Allow swipe to dismiss
         }
+
+        notificationManager.notify(NOTIFICATION_ID, builder.build())
+    }
+
+    /**
+     * Update notification with upload complete status and code
+     *
+     * @param status The status message
+     * @param uploadCode The upload code to display
+     */
+    private fun updateNotificationComplete(status: String, uploadCode: String) {
+        val builder = notificationBuilder ?: return
+
+        Log.d(TAG, "Updating notification with upload code: $uploadCode")
+
+        builder.setContentTitle("Upload Successful!")
+            .setContentText(status)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(status))
+            .setProgress(0, 0, false) // Remove progress bar
+            .setOngoing(false) // Not ongoing, can be dismissed
+            .setAutoCancel(true) // Swipe to dismiss
 
         notificationManager.notify(NOTIFICATION_ID, builder.build())
     }

@@ -18,6 +18,8 @@ public class PreferencesUtil {
     public static final String KEY_DEFAULT_MAX_DOWNLOADS = "default_max_downloads";
     public static final String KEY_DEFAULT_EXPIRY_HOURS = "default_expiry_hours";
     public static final String KEY_ASK_BEFORE_UPLOAD = "ask_before_upload";
+    public static final String KEY_UPLOAD_IN_PROGRESS = "upload_in_progress";
+    public static final String KEY_UPLOAD_FILE_NAME = "upload_file_name";
 
     // Default values
     private static final String DEFAULT_SERVER_ADDRESS = "";
@@ -254,5 +256,43 @@ public class PreferencesUtil {
         String clientKey = prefs.getString(KEY_CLIENT_KEY, DEFAULT_CLIENT_KEY);
 
         return !address.isEmpty() && port > 0 && !clientKey.isEmpty();
+    }
+
+    /**
+     * Check if an upload is currently in progress
+     *
+     * @param context The application context
+     * @return True if an upload is in progress, false otherwise
+     */
+    public static boolean isUploadInProgress(Context context) {
+        return getPreferences(context).getBoolean(KEY_UPLOAD_IN_PROGRESS, false);
+    }
+
+    /**
+     * Set the upload in progress status
+     *
+     * @param context The application context
+     * @param inProgress True if upload is in progress, false otherwise
+     * @param fileName The name of the file being uploaded (optional)
+     */
+    public static void setUploadInProgress(Context context, boolean inProgress, String fileName) {
+        SharedPreferences.Editor editor = getPreferences(context).edit();
+        editor.putBoolean(KEY_UPLOAD_IN_PROGRESS, inProgress);
+        if (inProgress && fileName != null) {
+            editor.putString(KEY_UPLOAD_FILE_NAME, fileName);
+        } else if (!inProgress) {
+            editor.remove(KEY_UPLOAD_FILE_NAME);
+        }
+        editor.apply();
+    }
+
+    /**
+     * Get the name of the file currently being uploaded
+     *
+     * @param context The application context
+     * @return The file name, or null if no upload is in progress
+     */
+    public static String getUploadFileName(Context context) {
+        return getPreferences(context).getString(KEY_UPLOAD_FILE_NAME, null);
     }
 }

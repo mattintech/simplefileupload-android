@@ -14,12 +14,16 @@ import com.mattintech.simplelogupload.constant.AppConstants
 import com.mattintech.simplelogupload.controller.FileController
 import com.mattintech.simplelogupload.controller.UploadController
 import com.mattintech.simplelogupload.model.UploadResult
+import com.mattintech.simplelogupload.util.PreferencesUtil
+import com.mattintech.simplelogupload.util.ZipUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * UI state for the main screen
@@ -56,10 +60,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var currentUploadFileName: String? = null
     private var currentUploadMaxDownloads: Int = 0
     private var currentUploadExpiryHours: Int = 0
+    private var currentUploadTempZipFile: File? = null
 
     init {
         loadDumpstateFiles()
         registerUploadReceiver()
+
+        // Check if there's an ongoing upload from a previous session
+        if (PreferencesUtil.isUploadInProgress(application)) {
+            val fileName = PreferencesUtil.getUploadFileName(application)
+            Log.d(TAG, "Detected ongoing upload: $fileName")
+            _uiState.value = _uiState.value.copy(
+                isLoading = true
+            )
+        }
     }
 
     /**
@@ -97,6 +111,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             UploadResult("Upload completed but code is missing")
                         }
 
+                        // Clean up temporary zip file if it exists
+                        currentUploadTempZipFile?.let { tempFile ->
+                            if (tempFile.exists()) {
+                                val deleted = tempFile.delete()
+                                Log.d(TAG, "Cleaned up temp zip file after upload: ${tempFile.name}, deleted: $deleted")
+                            }
+                            currentUploadTempZipFile = null
+                        }
+
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             uploadResult = result,
@@ -109,6 +132,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     AppConstants.ACTION_UPLOAD_ERROR -> {
                         val error = intent.getStringExtra(AppConstants.EXTRA_UPLOAD_ERROR)
                         Log.e(TAG, "Upload error: $error")
+
+                        // Clean up temporary zip file if it exists
+                        currentUploadTempZipFile?.let { tempFile ->
+                            if (tempFile.exists()) {
+                                val deleted = tempFile.delete()
+                                Log.d(TAG, "Cleaned up temp zip file after error: ${tempFile.name}, deleted: $deleted")
+                            }
+                            currentUploadTempZipFile = null
+                        }
 
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
@@ -277,10 +309,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * Upload selected dumpstate files
-     * Uploads multiple files by combining them into a ZIP first
+     * If multiple files are selected, combines them into a ZIP first
      */
     fun uploadSelectedDumpstates(maxDownloads: Int, expiryHours: Int) {
         viewModelScope.launch(Dispatchers.IO) {
+            var zipFile: File? = null
             try {
                 val files = _uiState.value.selectedDumpstateIndices
                     .map { _uiState.value.dumpstateFiles[it] }
@@ -297,20 +330,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     showUploadParamsDialog = false
                 )
 
-                Log.d(TAG, "Starting upload for ${files.size} dumpstate files")
+                Log.d(TAG, "Starting upload for ${files.size} dumpstate file(s)")
 
-                // For now, upload the first file using foreground service
-                // TODO: Implement proper multi-file ZIP and upload
-                val firstFile = files.first()
+                val fileToUpload: File
+
+                if (files.size == 1) {
+                    // Single file: upload directly
+                    fileToUpload = files.first()
+                    currentUploadTempZipFile = null
+                    Log.d(TAG, "Uploading single dumpstate file: ${fileToUpload.name}")
+                } else {
+                    // Multiple files: zip them first
+                    Log.d(TAG, "Zipping ${files.size} dumpstate files")
+
+                    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                    val zipFileName = "dumpstates_$timestamp"
+                    val cacheDir = getApplication<Application>().cacheDir
+
+                    zipFile = ZipUtil.zipFiles(files, cacheDir, zipFileName, null)
+                    fileToUpload = zipFile
+                    currentUploadTempZipFile = zipFile
+                    Log.d(TAG, "Created zip file: ${fileToUpload.name} (${fileToUpload.length()} bytes)")
+                }
 
                 // Track upload parameters for result construction
-                currentUploadFileName = firstFile.name
+                currentUploadFileName = fileToUpload.name
                 currentUploadMaxDownloads = maxDownloads
                 currentUploadExpiryHours = expiryHours
 
-                uploadController.startUploadService(firstFile, maxDownloads, expiryHours)
+                uploadController.startUploadService(fileToUpload, maxDownloads, expiryHours)
             } catch (e: Exception) {
                 Log.e(TAG, "Error uploading dumpstate files", e)
+
+                // Clean up zip file if it was created
+                zipFile?.let {
+                    if (it.exists()) {
+                        val deleted = it.delete()
+                        Log.d(TAG, "Cleaned up zip file: ${it.name}, deleted: $deleted")
+                    }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = "Error uploading files: ${e.message}"
