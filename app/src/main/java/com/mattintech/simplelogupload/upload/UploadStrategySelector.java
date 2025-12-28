@@ -15,9 +15,10 @@ import java.io.File;
 public class UploadStrategySelector {
     private static final String TAG = AppConstants.APP_TAG + "UploadStrategy";
     
-    // Threshold for using chunked uploads
-    private static final long CHUNKED_UPLOAD_THRESHOLD_WIFI = 50 * 1024 * 1024; // 50MB for WiFi
-    private static final long CHUNKED_UPLOAD_THRESHOLD_MOBILE = 10 * 1024 * 1024; // 10MB for mobile
+    // Threshold for using chunked uploads - matches chunk sizes
+    // Only use chunked upload if file is larger than chunk size
+    private static final long CHUNKED_UPLOAD_THRESHOLD_WIFI = 10 * 1024 * 1024; // 10MB for WiFi (matches chunk size)
+    private static final long CHUNKED_UPLOAD_THRESHOLD_MOBILE = 4 * 1024 * 1024; // 4MB for mobile (matches chunk size)
     
     /**
      * Check if chunked uploads should be used for the given file

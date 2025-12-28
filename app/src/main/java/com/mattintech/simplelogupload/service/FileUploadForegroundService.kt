@@ -69,10 +69,11 @@ class FileUploadForegroundService : Service() {
     // Upload state tracking
     private var currentUploadManager: ChunkedUploadManager? = null
     private var currentStandardUploadCall: Call? = null
+    private var currentZipJob: kotlinx.coroutines.Job? = null
     private var uploadState: UploadState = UploadState.IDLE
 
     enum class UploadState {
-        IDLE, UPLOADING, PAUSED, CANCELLED
+        IDLE, PREPARING, UPLOADING, PAUSED, CANCELLED
     }
 
     override fun onCreate() {
@@ -170,18 +171,51 @@ class FileUploadForegroundService : Service() {
         // Mark upload as in progress
         PreferencesUtil.setUploadInProgress(this, true, file.name)
 
-        // Prepare file for upload
+        // Prepare file for upload (zip if needed based on extension and file type)
         Log.d(TAG, "Starting file preparation...")
+
+        // Check if file needs zipping to show appropriate message
+        val needsZipping = !com.mattintech.simplelogupload.util.FileUtil.isZipFile(file)
+
+        // Set state to PREPARING
+        uploadState = UploadState.PREPARING
+
         FileController.prepareFileForUpload(file, object : FileController.FilePrepareCallback {
             override fun onSuccess(preparedFile: File) {
+                if (uploadState == UploadState.CANCELLED) {
+                    Log.d(TAG, "Upload cancelled during preparation")
+                    return
+                }
+
                 Log.d(TAG, "File prepared for upload: ${preparedFile.name}")
                 Log.d(TAG, "Starting upload process...")
+                uploadState = UploadState.IDLE
                 uploadFile(preparedFile, maxDownloads, expiryHours)
             }
 
             override fun onProgress(progress: Int) {
-                Log.d(TAG, "File preparation progress: $progress%")
-                updateNotification("Preparing file: $progress%", progress, 100)
+                if (uploadState == UploadState.CANCELLED) {
+                    return
+                }
+
+                // Throttle notification updates to every 500ms to ensure visibility
+                val currentTime = System.currentTimeMillis()
+                val shouldUpdate = currentTime - lastProgressUpdate >= 500 || progress == 100
+
+                Log.d(TAG, "File preparation progress: $progress% (shouldUpdate: $shouldUpdate)")
+
+                if (shouldUpdate) {
+                    lastProgressUpdate = currentTime
+                    val message = if (needsZipping) {
+                        "Compressing file: $progress%"
+                    } else {
+                        "Preparing file: $progress%"
+                    }
+                    updateNotification(message, progress, 100)
+                }
+
+                // Always send broadcast for in-app UI (not throttled)
+                sendZipProgressBroadcast(progress)
             }
 
             override fun onError(e: Exception) {
@@ -580,6 +614,10 @@ class FileUploadForegroundService : Service() {
             builder.clearActions() // Remove old actions
 
             when (uploadState) {
+                UploadState.PREPARING -> {
+                    // Show Cancel button during file preparation/zipping
+                    builder.addAction(createCancelAction())
+                }
                 UploadState.PAUSED -> {
                     // Show Resume and Cancel buttons
                     builder.addAction(createResumeAction())
@@ -689,6 +727,18 @@ class FileUploadForegroundService : Service() {
         val intent = Intent(AppConstants.ACTION_UPLOAD_PROGRESS).apply {
             putExtra(AppConstants.EXTRA_BYTES_UPLOADED, bytesUploaded)
             putExtra(AppConstants.EXTRA_TOTAL_BYTES, totalBytes)
+            putExtra(AppConstants.EXTRA_PERCENT_COMPLETE, percentComplete)
+        }
+
+        // Send local broadcast to the ViewModel
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    }
+
+    /**
+     * Send a broadcast with zip/compression progress update
+     */
+    private fun sendZipProgressBroadcast(percentComplete: Int) {
+        val intent = Intent(AppConstants.ACTION_ZIP_PROGRESS).apply {
             putExtra(AppConstants.EXTRA_PERCENT_COMPLETE, percentComplete)
         }
 
@@ -838,6 +888,9 @@ class FileUploadForegroundService : Service() {
         Log.d(TAG, "Handling cancel upload request")
 
         uploadState = UploadState.CANCELLED
+
+        // Cancel file preparation (zipping) if in progress
+        FileController.cancelPreparation()
 
         // Cancel chunked upload
         currentUploadManager?.let { manager ->

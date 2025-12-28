@@ -88,6 +88,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         uploadReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
+                    AppConstants.ACTION_ZIP_PROGRESS -> {
+                        val percentComplete = intent.getIntExtra(AppConstants.EXTRA_PERCENT_COMPLETE, 0)
+
+                        _uiState.value = _uiState.value.copy(
+                            uploadProgress = percentComplete,
+                            uploadStatusMessage = "Compressing file: $percentComplete%"
+                        )
+                    }
                     AppConstants.ACTION_UPLOAD_PROGRESS -> {
                         val bytesUploaded = intent.getLongExtra(AppConstants.EXTRA_BYTES_UPLOADED, 0)
                         val totalBytes = intent.getLongExtra(AppConstants.EXTRA_TOTAL_BYTES, 0)
@@ -195,6 +203,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val filter = IntentFilter().apply {
+            addAction(AppConstants.ACTION_ZIP_PROGRESS)
             addAction(AppConstants.ACTION_UPLOAD_PROGRESS)
             addAction(AppConstants.ACTION_UPLOAD_COMPLETE)
             addAction(AppConstants.ACTION_UPLOAD_ERROR)

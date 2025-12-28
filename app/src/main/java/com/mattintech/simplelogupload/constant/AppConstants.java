@@ -10,6 +10,7 @@ public class AppConstants {
     public static final String ACTION_UPLOAD_COMPLETE = "com.mattintech.simplelogupload.UPLOAD_COMPLETE";
     public static final String ACTION_UPLOAD_ERROR = "com.mattintech.simplelogupload.UPLOAD_ERROR";
     public static final String ACTION_UPLOAD_PROGRESS = "com.mattintech.simplelogupload.UPLOAD_PROGRESS";
+    public static final String ACTION_ZIP_PROGRESS = "com.mattintech.simplelogupload.ZIP_PROGRESS";
     public static final String ACTION_UPLOAD_PAUSED = "com.mattintech.simplelogupload.UPLOAD_PAUSED";
     public static final String ACTION_UPLOAD_RESUMED = "com.mattintech.simplelogupload.UPLOAD_RESUMED";
     public static final String ACTION_UPLOAD_CANCELLED = "com.mattintech.simplelogupload.UPLOAD_CANCELLED";
