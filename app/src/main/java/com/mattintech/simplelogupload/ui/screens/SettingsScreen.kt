@@ -269,6 +269,24 @@ fun SettingsScreen(
                 singleLine = true
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // QR Scan Button
+            OutlinedButton(
+                onClick = {
+                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Default.QrCodeScanner,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Scan QR Code to Auto-Fill")
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Upload Defaults Section
@@ -347,24 +365,6 @@ fun SettingsScreen(
                         onCheckedChange = { askBeforeUpload = it }
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // QR Scan Button
-            OutlinedButton(
-                onClick = {
-                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    Icons.Default.QrCodeScanner,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Scan QR Code")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
