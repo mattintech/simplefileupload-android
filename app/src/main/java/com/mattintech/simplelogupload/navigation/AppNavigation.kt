@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.mattintech.simplelogupload.ui.screens.OnboardingScreen
 import com.mattintech.simplelogupload.ui.screens.WelcomeScreen
 import com.mattintech.simplelogupload.ui.screens.ServerSetupScreen
 import com.mattintech.simplelogupload.ui.screens.MainScreen
@@ -25,6 +26,18 @@ fun AppNavigation(
         navController = navController,
         startDestination = startDestination
     ) {
+        // Onboarding carousel - shown on very first launch with permissions and server setup
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onOnboardingComplete = {
+                    navController.navigate(Screen.Main.route) {
+                        // Clear backstack so user can't go back to onboarding
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // Welcome screen - shown on first launch
         composable(Screen.Welcome.route) {
             WelcomeScreen(

@@ -1,5 +1,6 @@
 package com.mattintech.simplelogupload.ui.screens.tabs
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -40,6 +41,30 @@ fun GeneralUploadTab(
     val activity = context as Activity
     val uiState by viewModel.uiState.collectAsState()
 
+    // State to track pending upload parameters
+    var pendingUpload by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+
+    // Notification permission launcher
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permission granted, proceed with pending upload
+            pendingUpload?.let { (maxDownloads, expiryHours) ->
+                uiState.selectedFile?.let { file ->
+                    viewModel.uploadFile(file, maxDownloads, expiryHours)
+                }
+            }
+            pendingUpload = null
+        } else {
+            Toast.makeText(
+                context,
+                "Notification permission is required to show upload progress",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     // File picker launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -62,6 +87,22 @@ fun GeneralUploadTab(
                 "All files access permission is required to select files",
                 Toast.LENGTH_LONG
             ).show()
+        }
+    }
+
+    // Helper function to check permission and upload
+    val uploadWithPermissionCheck: (Int, Int) -> Unit = { maxDownloads, expiryHours ->
+        if (PermissionUtil.hasNotificationPermission(context)) {
+            // Permission already granted, proceed with upload
+            uiState.selectedFile?.let { file ->
+                viewModel.uploadFile(file, maxDownloads, expiryHours)
+            }
+        } else {
+            // Need to request permission first
+            pendingUpload = Pair(maxDownloads, expiryHours)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
     }
 
@@ -173,9 +214,7 @@ fun GeneralUploadTab(
                             } else {
                                 val maxDownloads = PreferencesUtil.getDefaultMaxDownloads(context)
                                 val expiryHours = PreferencesUtil.getDefaultExpiryHours(context)
-                                uiState.selectedFile?.let { file ->
-                                    viewModel.uploadFile(file, maxDownloads, expiryHours)
-                                }
+                                uploadWithPermissionCheck(maxDownloads, expiryHours)
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -205,9 +244,7 @@ fun GeneralUploadTab(
         UploadParamsDialog(
             onDismiss = { viewModel.hideUploadParamsDialog() },
             onConfirm = { maxDownloads, expiryHours ->
-                uiState.selectedFile?.let { file ->
-                    viewModel.uploadFile(file, maxDownloads, expiryHours)
-                }
+                uploadWithPermissionCheck(maxDownloads, expiryHours)
             }
         )
     }

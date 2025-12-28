@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import com.mattintech.simplelogupload.navigation.AppNavigation
 import com.mattintech.simplelogupload.navigation.Screen
 import com.mattintech.simplelogupload.ui.theme.SimpleLogUploadTheme
+import com.mattintech.simplelogupload.util.PermissionUtil
 import com.mattintech.simplelogupload.util.PreferencesUtil
 
 /**
@@ -61,6 +62,12 @@ class ComposeMainActivity : ComponentActivity() {
      * Determine which screen to show first based on app configuration
      */
     private fun getStartDestination(): String {
+        // Check if onboarding has been completed first
+        if (!PreferencesUtil.isOnboardingCompleted(this)) {
+            return Screen.Onboarding.route
+        }
+
+        // Then check if setup is complete
         return if (PreferencesUtil.isSetupCompleted(this) &&
             PreferencesUtil.areServerSettingsConfigured(this)) {
             Screen.Main.route

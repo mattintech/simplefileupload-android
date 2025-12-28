@@ -5,6 +5,11 @@ package com.mattintech.simplelogupload.navigation
  */
 sealed class Screen(val route: String) {
     /**
+     * Onboarding carousel with app intro and permissions
+     */
+    data object Onboarding : Screen("onboarding")
+
+    /**
      * Welcome/onboarding screen shown on first launch
      */
     data object Welcome : Screen("welcome")

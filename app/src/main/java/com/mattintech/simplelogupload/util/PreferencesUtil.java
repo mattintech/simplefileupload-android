@@ -14,6 +14,7 @@ public class PreferencesUtil {
     public static final String KEY_SERVER_PORT = "server_port";
     public static final String KEY_CLIENT_KEY = "client_key";
     public static final String KEY_SETUP_COMPLETED = "setup_completed";
+    public static final String KEY_ONBOARDING_COMPLETED = "onboarding_completed";
     public static final String KEY_DEFAULT_MAX_DOWNLOADS = "default_max_downloads";
     public static final String KEY_DEFAULT_EXPIRY_HOURS = "default_expiry_hours";
     public static final String KEY_ASK_BEFORE_UPLOAD = "ask_before_upload";
@@ -23,6 +24,7 @@ public class PreferencesUtil {
     private static final int DEFAULT_SERVER_PORT = 0;
     private static final String DEFAULT_CLIENT_KEY = "";
     private static final boolean DEFAULT_SETUP_COMPLETED = false;
+    private static final boolean DEFAULT_ONBOARDING_COMPLETED = false;
     private static final int DEFAULT_MAX_DOWNLOADS = 5;
     private static final int DEFAULT_EXPIRY_HOURS = 24;
     private static final boolean DEFAULT_ASK_BEFORE_UPLOAD = true;
@@ -132,6 +134,7 @@ public class PreferencesUtil {
         editor.putInt(KEY_SERVER_PORT, DEFAULT_SERVER_PORT);
         editor.putString(KEY_CLIENT_KEY, DEFAULT_CLIENT_KEY);
         editor.putBoolean(KEY_SETUP_COMPLETED, DEFAULT_SETUP_COMPLETED);
+        editor.putBoolean(KEY_ONBOARDING_COMPLETED, DEFAULT_ONBOARDING_COMPLETED);
         editor.putInt(KEY_DEFAULT_MAX_DOWNLOADS, DEFAULT_MAX_DOWNLOADS);
         editor.putInt(KEY_DEFAULT_EXPIRY_HOURS, DEFAULT_EXPIRY_HOURS);
         editor.putBoolean(KEY_ASK_BEFORE_UPLOAD, DEFAULT_ASK_BEFORE_UPLOAD);
@@ -150,14 +153,34 @@ public class PreferencesUtil {
     
     /**
      * Set the setup completed status
-     * 
+     *
      * @param context The application context
      * @param completed True if setup has been completed, false otherwise
      */
     public static void setSetupCompleted(Context context, boolean completed) {
         getPreferences(context).edit().putBoolean(KEY_SETUP_COMPLETED, completed).apply();
     }
-    
+
+    /**
+     * Check if onboarding has been completed
+     *
+     * @param context The application context
+     * @return True if onboarding has been completed, false otherwise
+     */
+    public static boolean isOnboardingCompleted(Context context) {
+        return getPreferences(context).getBoolean(KEY_ONBOARDING_COMPLETED, DEFAULT_ONBOARDING_COMPLETED);
+    }
+
+    /**
+     * Set the onboarding completed status
+     *
+     * @param context The application context
+     * @param completed True if onboarding has been completed, false otherwise
+     */
+    public static void setOnboardingCompleted(Context context, boolean completed) {
+        getPreferences(context).edit().putBoolean(KEY_ONBOARDING_COMPLETED, completed).apply();
+    }
+
     /**
      * Get the default max downloads from preferences
      *

@@ -1,6 +1,10 @@
 package com.mattintech.simplelogupload.ui.screens.tabs
 
+import android.Manifest
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -13,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mattintech.simplelogupload.ui.components.UploadParamsDialog
 import com.mattintech.simplelogupload.ui.components.UploadResultDialog
+import com.mattintech.simplelogupload.util.PermissionUtil
 import com.mattintech.simplelogupload.util.PreferencesUtil
 import com.mattintech.simplelogupload.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
@@ -32,6 +37,42 @@ fun DumpstateTab(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+
+    // State to track pending upload parameters
+    var pendingUpload by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+
+    // Notification permission launcher
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permission granted, proceed with pending upload
+            pendingUpload?.let { (maxDownloads, expiryHours) ->
+                viewModel.uploadSelectedDumpstates(maxDownloads, expiryHours)
+            }
+            pendingUpload = null
+        } else {
+            Toast.makeText(
+                context,
+                "Notification permission is required to show upload progress",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    // Helper function to check permission and upload
+    val uploadWithPermissionCheck: (Int, Int) -> Unit = { maxDownloads, expiryHours ->
+        if (PermissionUtil.hasNotificationPermission(context)) {
+            // Permission already granted, proceed with upload
+            viewModel.uploadSelectedDumpstates(maxDownloads, expiryHours)
+        } else {
+            // Need to request permission first
+            pendingUpload = Pair(maxDownloads, expiryHours)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
 
     // Show error toast
     LaunchedEffect(uiState.errorMessage) {
@@ -145,7 +186,7 @@ fun DumpstateTab(
                         } else {
                             val maxDownloads = PreferencesUtil.getDefaultMaxDownloads(context)
                             val expiryHours = PreferencesUtil.getDefaultExpiryHours(context)
-                            viewModel.uploadSelectedDumpstates(maxDownloads, expiryHours)
+                            uploadWithPermissionCheck(maxDownloads, expiryHours)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -177,7 +218,7 @@ fun DumpstateTab(
         UploadParamsDialog(
             onDismiss = { viewModel.hideUploadParamsDialog() },
             onConfirm = { maxDownloads, expiryHours ->
-                viewModel.uploadSelectedDumpstates(maxDownloads, expiryHours)
+                uploadWithPermissionCheck(maxDownloads, expiryHours)
             }
         )
     }
