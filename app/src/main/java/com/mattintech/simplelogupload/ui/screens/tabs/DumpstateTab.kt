@@ -199,16 +199,6 @@ fun DumpstateTab(
                     )
                 }
 
-                // Loading indicator
-                if (uiState.isLoading) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
             }
         }
     }

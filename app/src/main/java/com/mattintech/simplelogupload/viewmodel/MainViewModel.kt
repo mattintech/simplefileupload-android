@@ -33,7 +33,10 @@ data class MainUiState(
     val uploadResult: UploadResult? = null,
     val errorMessage: String? = null,
     val showUploadParamsDialog: Boolean = false,
-    val showUploadResultDialog: Boolean = false
+    val showUploadResultDialog: Boolean = false,
+    val uploadProgress: Int = 0,
+    val bytesUploaded: Long = 0,
+    val totalBytes: Long = 0
 )
 
 /**
@@ -66,6 +69,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         uploadReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
+                    AppConstants.ACTION_UPLOAD_PROGRESS -> {
+                        val bytesUploaded = intent.getLongExtra(AppConstants.EXTRA_BYTES_UPLOADED, 0)
+                        val totalBytes = intent.getLongExtra(AppConstants.EXTRA_TOTAL_BYTES, 0)
+                        val percentComplete = intent.getIntExtra(AppConstants.EXTRA_PERCENT_COMPLETE, 0)
+
+                        _uiState.value = _uiState.value.copy(
+                            uploadProgress = percentComplete,
+                            bytesUploaded = bytesUploaded,
+                            totalBytes = totalBytes
+                        )
+                    }
                     AppConstants.ACTION_UPLOAD_COMPLETE -> {
                         val code = intent.getStringExtra(AppConstants.EXTRA_UPLOAD_CODE)
                         Log.d(TAG, "Upload completed: $code")
@@ -86,7 +100,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             uploadResult = result,
-                            showUploadResultDialog = true
+                            showUploadResultDialog = true,
+                            uploadProgress = 0,
+                            bytesUploaded = 0,
+                            totalBytes = 0
                         )
                     }
                     AppConstants.ACTION_UPLOAD_ERROR -> {
@@ -95,7 +112,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            errorMessage = error ?: "Unknown error"
+                            errorMessage = error ?: "Unknown error",
+                            uploadProgress = 0,
+                            bytesUploaded = 0,
+                            totalBytes = 0
                         )
                     }
                 }
@@ -103,6 +123,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val filter = IntentFilter().apply {
+            addAction(AppConstants.ACTION_UPLOAD_PROGRESS)
             addAction(AppConstants.ACTION_UPLOAD_COMPLETE)
             addAction(AppConstants.ACTION_UPLOAD_ERROR)
         }

@@ -253,6 +253,7 @@ class FileUploadForegroundService : Service() {
                     )
 
                     updateNotification(statusText, percentComplete, 100)
+                    sendProgressBroadcast(bytesUploaded, totalBytes, percentComplete)
                     Log.d(TAG, "Upload progress: $percentComplete% ($uploadedMB MB / $totalMB MB)")
                 }
             }
@@ -550,6 +551,20 @@ class FileUploadForegroundService : Service() {
 
         // Send both a regular broadcast and a local broadcast to ensure delivery
         sendBroadcast(intent)
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    }
+
+    /**
+     * Send a broadcast with upload progress update
+     */
+    private fun sendProgressBroadcast(bytesUploaded: Long, totalBytes: Long, percentComplete: Int) {
+        val intent = Intent(AppConstants.ACTION_UPLOAD_PROGRESS).apply {
+            putExtra(AppConstants.EXTRA_BYTES_UPLOADED, bytesUploaded)
+            putExtra(AppConstants.EXTRA_TOTAL_BYTES, totalBytes)
+            putExtra(AppConstants.EXTRA_PERCENT_COMPLETE, percentComplete)
+        }
+
+        // Send local broadcast to the ViewModel
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
     }
 }

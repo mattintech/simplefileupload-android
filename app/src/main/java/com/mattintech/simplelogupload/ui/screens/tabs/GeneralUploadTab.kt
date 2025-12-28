@@ -226,17 +226,6 @@ fun GeneralUploadTab(
             }
         }
 
-        // Loading indicator
-        if (uiState.isLoading) {
-            Spacer(modifier = Modifier.height(24.dp))
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Uploading...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 
     // Upload params dialog
