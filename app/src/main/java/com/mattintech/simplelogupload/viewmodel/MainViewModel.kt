@@ -49,6 +49,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var uploadReceiver: BroadcastReceiver? = null
 
+    // Track current upload parameters for result construction
+    private var currentUploadFileName: String? = null
+    private var currentUploadMaxDownloads: Int = 0
+    private var currentUploadExpiryHours: Int = 0
+
     init {
         loadDumpstateFiles()
         registerUploadReceiver()
@@ -65,9 +70,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val code = intent.getStringExtra(AppConstants.EXTRA_UPLOAD_CODE)
                         Log.d(TAG, "Upload completed: $code")
 
+                        // Create proper success UploadResult with tracked parameters
+                        val result = if (code != null && currentUploadFileName != null) {
+                            UploadResult(
+                                code,
+                                currentUploadFileName!!,
+                                currentUploadMaxDownloads,
+                                currentUploadExpiryHours
+                            )
+                        } else {
+                            // Fallback for error case
+                            UploadResult("Upload completed but code is missing")
+                        }
+
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            uploadResult = UploadResult(code ?: "UNKNOWN"),
+                            uploadResult = result,
                             showUploadResultDialog = true
                         )
                     }
@@ -208,48 +226,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Upload a general file
+     * Upload a general file using foreground service
      */
     fun uploadFile(file: File, maxDownloads: Int, expiryHours: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = true,
-                    showUploadParamsDialog = false
-                )
+        try {
+            // Track upload parameters for result construction
+            currentUploadFileName = file.name
+            currentUploadMaxDownloads = maxDownloads
+            currentUploadExpiryHours = expiryHours
 
-                Log.d(TAG, "Starting upload for file: ${file.name}")
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                showUploadParamsDialog = false
+            )
 
-                // Upload file and handle result
-                uploadController.uploadFile(file, maxDownloads, expiryHours)
-                    .thenAccept { result ->
-                        if (result.isSuccess) {
-                            _uiState.value = _uiState.value.copy(
-                                isLoading = false,
-                                uploadResult = result,
-                                showUploadResultDialog = true
-                            )
-                        } else {
-                            _uiState.value = _uiState.value.copy(
-                                isLoading = false,
-                                errorMessage = result.error ?: "Upload failed"
-                            )
-                        }
-                    }
-                    .exceptionally { ex ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            errorMessage = "Error uploading file: ${ex.message}"
-                        )
-                        null
-                    }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error uploading file", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = "Error uploading file: ${e.message}"
-                )
-            }
+            Log.d(TAG, "Starting upload for file: ${file.name}")
+
+            // Start foreground service for upload with notification
+            uploadController.startUploadService(file, maxDownloads, expiryHours)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting upload service", e)
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = "Error starting upload: ${e.message}"
+            )
         }
     }
 
@@ -277,32 +278,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 Log.d(TAG, "Starting upload for ${files.size} dumpstate files")
 
-                // For now, upload the first file
+                // For now, upload the first file using foreground service
                 // TODO: Implement proper multi-file ZIP and upload
                 val firstFile = files.first()
-                uploadController.uploadFile(firstFile, maxDownloads, expiryHours)
-                    .thenAccept { result ->
-                        if (result.isSuccess) {
-                            _uiState.value = _uiState.value.copy(
-                                isLoading = false,
-                                uploadResult = result,
-                                showUploadResultDialog = true,
-                                selectedDumpstateIndices = emptySet()
-                            )
-                        } else {
-                            _uiState.value = _uiState.value.copy(
-                                isLoading = false,
-                                errorMessage = result.error ?: "Upload failed"
-                            )
-                        }
-                    }
-                    .exceptionally { ex ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            errorMessage = "Error uploading files: ${ex.message}"
-                        )
-                        null
-                    }
+
+                // Track upload parameters for result construction
+                currentUploadFileName = firstFile.name
+                currentUploadMaxDownloads = maxDownloads
+                currentUploadExpiryHours = expiryHours
+
+                uploadController.startUploadService(firstFile, maxDownloads, expiryHours)
             } catch (e: Exception) {
                 Log.e(TAG, "Error uploading dumpstate files", e)
                 _uiState.value = _uiState.value.copy(
