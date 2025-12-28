@@ -1,11 +1,17 @@
 package com.mattintech.simplelogupload.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.mattintech.simplelogupload.util.PreferencesUtil
@@ -55,6 +61,12 @@ fun UploadParamsDialog(
         }
     }
 
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Upload Parameters") },
@@ -62,6 +74,15 @@ fun UploadParamsDialog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Instructions
+                Text(
+                    text = "Edit the values below to customize upload settings:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
                 // Max Downloads
                 OutlinedTextField(
                     value = maxDownloads,
@@ -69,15 +90,27 @@ fun UploadParamsDialog(
                         maxDownloads = it
                         maxDownloadsError = null
                     },
-                    label = { Text("Maximum Downloads") },
-                    placeholder = { Text("Default: 5") },
+                    label = { Text("Maximum Downloads (tap to edit)") },
+                    placeholder = { Text("Enter number") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit max downloads",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
                     supportingText = {
                         Text(maxDownloadsError ?: "Set to 0 for unlimited downloads")
                     },
                     isError = maxDownloadsError != null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next
+                    ),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
                 )
 
                 // Expiry Hours
@@ -87,13 +120,26 @@ fun UploadParamsDialog(
                         expiryHours = it
                         expiryHoursError = null
                     },
-                    label = { Text("Expiry Time (hours)") },
-                    placeholder = { Text("Default: 24") },
+                    label = { Text("Expiry Time in hours (tap to edit)") },
+                    placeholder = { Text("Enter hours") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit expiry hours",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
                     supportingText = {
                         Text(expiryHoursError ?: "Maximum 24 hours (1 day)")
                     },
                     isError = expiryHoursError != null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { validateAndConfirm() }
+                    ),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
