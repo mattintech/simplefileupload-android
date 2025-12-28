@@ -233,14 +233,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun handleFileSelection(uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // TODO: Convert URI to File using FileController
-                // For now, store URI info
-                val fileName = uri.lastPathSegment ?: "Unknown file"
+                // Get filename from URI
+                val fileName = getFileNameFromUri(uri)
+                Log.d(TAG, "File selected from URI: $fileName")
+
+                // Convert URI to File using FileController
+                val file = FileController.saveContentUriToFile(
+                    getApplication(),
+                    uri,
+                    fileName
+                )
+
                 _uiState.value = _uiState.value.copy(
                     selectedFileName = fileName,
-                    selectedFile = null // Will need to implement URI to File conversion
+                    selectedFile = file
                 )
-                Log.d(TAG, "File selected: $fileName")
+                Log.d(TAG, "File saved to cache: ${file.absolutePath}, size: ${file.length()} bytes")
             } catch (e: Exception) {
                 Log.e(TAG, "Error handling file selection", e)
                 _uiState.value = _uiState.value.copy(
@@ -248,6 +256,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
+    }
+
+    /**
+     * Get filename from URI using ContentResolver
+     */
+    private fun getFileNameFromUri(uri: Uri): String {
+        var fileName = "selected_file_${System.currentTimeMillis()}"
+
+        // Try to get the display name from the content resolver
+        try {
+            getApplication<Application>().contentResolver.query(
+                uri, null, null, null, null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1) {
+                        fileName = cursor.getString(nameIndex) ?: fileName
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not get filename from URI, using default", e)
+            // Fall back to using last path segment if available
+            fileName = uri.lastPathSegment ?: fileName
+        }
+
+        return fileName
     }
 
     /**
