@@ -45,10 +45,21 @@ fun SettingsScreen(
     var clientKey by remember {
         mutableStateOf(PreferencesUtil.getClientKey(context))
     }
+    var defaultMaxDownloads by remember {
+        mutableStateOf(PreferencesUtil.getDefaultMaxDownloads(context).toString())
+    }
+    var defaultExpiryHours by remember {
+        mutableStateOf(PreferencesUtil.getDefaultExpiryHours(context).toString())
+    }
+    var askBeforeUpload by remember {
+        mutableStateOf(PreferencesUtil.getAskBeforeUpload(context))
+    }
 
     var serverAddressError by remember { mutableStateOf<String?>(null) }
     var serverPortError by remember { mutableStateOf<String?>(null) }
     var clientKeyError by remember { mutableStateOf<String?>(null) }
+    var maxDownloadsError by remember { mutableStateOf<String?>(null) }
+    var expiryHoursError by remember { mutableStateOf<String?>(null) }
 
     // QR scanner launcher
     val qrScannerLauncher = rememberLauncherForActivityResult(
@@ -108,6 +119,8 @@ fun SettingsScreen(
         serverAddressError = null
         serverPortError = null
         clientKeyError = null
+        maxDownloadsError = null
+        expiryHoursError = null
 
         var hasError = false
 
@@ -135,12 +148,29 @@ fun SettingsScreen(
             hasError = true
         }
 
+        // Validate max downloads
+        val maxDl = defaultMaxDownloads.toIntOrNull()
+        if (maxDl == null || maxDl < 0) {
+            maxDownloadsError = "Must be 0 or greater (0 = unlimited)"
+            hasError = true
+        }
+
+        // Validate expiry hours
+        val expiry = defaultExpiryHours.toIntOrNull()
+        if (expiry == null || expiry <= 0 || expiry > 24) {
+            expiryHoursError = "Must be between 1 and 24 hours"
+            hasError = true
+        }
+
         if (hasError) return
 
         // Save settings
         PreferencesUtil.setServerAddress(context, serverAddress)
         PreferencesUtil.setServerPort(context, serverPort.toInt())
         PreferencesUtil.setClientKey(context, clientKey)
+        PreferencesUtil.setDefaultMaxDownloads(context, maxDl!!)
+        PreferencesUtil.setDefaultExpiryHours(context, expiry!!)
+        PreferencesUtil.setAskBeforeUpload(context, askBeforeUpload)
 
         Toast.makeText(context, "Settings saved successfully!", Toast.LENGTH_SHORT).show()
         onNavigateBack()
@@ -151,11 +181,16 @@ fun SettingsScreen(
         serverAddress = PreferencesUtil.getServerAddress(context)
         serverPort = PreferencesUtil.getServerPort(context).toString()
         clientKey = PreferencesUtil.getClientKey(context)
+        defaultMaxDownloads = PreferencesUtil.getDefaultMaxDownloads(context).toString()
+        defaultExpiryHours = PreferencesUtil.getDefaultExpiryHours(context).toString()
+        askBeforeUpload = PreferencesUtil.getAskBeforeUpload(context)
 
         // Clear errors
         serverAddressError = null
         serverPortError = null
         clientKeyError = null
+        maxDownloadsError = null
+        expiryHoursError = null
 
         Toast.makeText(context, "Settings reset", Toast.LENGTH_SHORT).show()
     }
@@ -234,7 +269,87 @@ fun SettingsScreen(
                 singleLine = true
             )
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Upload Defaults Section
+            Text(
+                text = "Upload Defaults",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Default Max Downloads
+            OutlinedTextField(
+                value = defaultMaxDownloads,
+                onValueChange = {
+                    defaultMaxDownloads = it
+                    maxDownloadsError = null
+                },
+                label = { Text("Default Maximum Downloads") },
+                placeholder = { Text("5") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = maxDownloadsError != null,
+                supportingText = {
+                    Text(maxDownloadsError ?: "Set to 0 for unlimited downloads")
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+
+            // Default Expiry Hours
+            OutlinedTextField(
+                value = defaultExpiryHours,
+                onValueChange = {
+                    defaultExpiryHours = it
+                    expiryHoursError = null
+                },
+                label = { Text("Default Expiry Time (hours)") },
+                placeholder = { Text("24") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = expiryHoursError != null,
+                supportingText = {
+                    Text(expiryHoursError ?: "Maximum 24 hours (1 day)")
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+
+            // Ask Before Upload Switch
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Ask Before Upload",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (askBeforeUpload) "Show upload parameters dialog" else "Use default settings",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = askBeforeUpload,
+                        onCheckedChange = { askBeforeUpload = it }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             // QR Scan Button
             OutlinedButton(

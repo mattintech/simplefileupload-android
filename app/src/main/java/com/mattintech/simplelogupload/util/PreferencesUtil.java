@@ -14,12 +14,18 @@ public class PreferencesUtil {
     public static final String KEY_SERVER_PORT = "server_port";
     public static final String KEY_CLIENT_KEY = "client_key";
     public static final String KEY_SETUP_COMPLETED = "setup_completed";
-    
+    public static final String KEY_DEFAULT_MAX_DOWNLOADS = "default_max_downloads";
+    public static final String KEY_DEFAULT_EXPIRY_HOURS = "default_expiry_hours";
+    public static final String KEY_ASK_BEFORE_UPLOAD = "ask_before_upload";
+
     // Default values
     private static final String DEFAULT_SERVER_ADDRESS = "";
     private static final int DEFAULT_SERVER_PORT = 0;
     private static final String DEFAULT_CLIENT_KEY = "";
     private static final boolean DEFAULT_SETUP_COMPLETED = false;
+    private static final int DEFAULT_MAX_DOWNLOADS = 5;
+    private static final int DEFAULT_EXPIRY_HOURS = 24;
+    private static final boolean DEFAULT_ASK_BEFORE_UPLOAD = true;
     
     /**
      * Get the shared preferences instance
@@ -117,7 +123,7 @@ public class PreferencesUtil {
     
     /**
      * Reset all settings to default values
-     * 
+     *
      * @param context The application context
      */
     public static void resetToDefaults(Context context) {
@@ -126,6 +132,9 @@ public class PreferencesUtil {
         editor.putInt(KEY_SERVER_PORT, DEFAULT_SERVER_PORT);
         editor.putString(KEY_CLIENT_KEY, DEFAULT_CLIENT_KEY);
         editor.putBoolean(KEY_SETUP_COMPLETED, DEFAULT_SETUP_COMPLETED);
+        editor.putInt(KEY_DEFAULT_MAX_DOWNLOADS, DEFAULT_MAX_DOWNLOADS);
+        editor.putInt(KEY_DEFAULT_EXPIRY_HOURS, DEFAULT_EXPIRY_HOURS);
+        editor.putBoolean(KEY_ASK_BEFORE_UPLOAD, DEFAULT_ASK_BEFORE_UPLOAD);
         editor.apply();
     }
     
@@ -150,8 +159,68 @@ public class PreferencesUtil {
     }
     
     /**
+     * Get the default max downloads from preferences
+     *
+     * @param context The application context
+     * @return The default max downloads
+     */
+    public static int getDefaultMaxDownloads(Context context) {
+        return getPreferences(context).getInt(KEY_DEFAULT_MAX_DOWNLOADS, DEFAULT_MAX_DOWNLOADS);
+    }
+
+    /**
+     * Set the default max downloads in preferences
+     *
+     * @param context The application context
+     * @param maxDownloads The default max downloads to save
+     */
+    public static void setDefaultMaxDownloads(Context context, int maxDownloads) {
+        getPreferences(context).edit().putInt(KEY_DEFAULT_MAX_DOWNLOADS, maxDownloads).apply();
+    }
+
+    /**
+     * Get the default expiry hours from preferences
+     *
+     * @param context The application context
+     * @return The default expiry hours
+     */
+    public static int getDefaultExpiryHours(Context context) {
+        return getPreferences(context).getInt(KEY_DEFAULT_EXPIRY_HOURS, DEFAULT_EXPIRY_HOURS);
+    }
+
+    /**
+     * Set the default expiry hours in preferences
+     *
+     * @param context The application context
+     * @param expiryHours The default expiry hours to save
+     */
+    public static void setDefaultExpiryHours(Context context, int expiryHours) {
+        getPreferences(context).edit().putInt(KEY_DEFAULT_EXPIRY_HOURS, expiryHours).apply();
+    }
+
+    /**
+     * Get the ask before upload preference
+     *
+     * @param context The application context
+     * @return True if should ask before upload, false otherwise
+     */
+    public static boolean getAskBeforeUpload(Context context) {
+        return getPreferences(context).getBoolean(KEY_ASK_BEFORE_UPLOAD, DEFAULT_ASK_BEFORE_UPLOAD);
+    }
+
+    /**
+     * Set the ask before upload preference
+     *
+     * @param context The application context
+     * @param askBeforeUpload True if should ask before upload, false otherwise
+     */
+    public static void setAskBeforeUpload(Context context, boolean askBeforeUpload) {
+        getPreferences(context).edit().putBoolean(KEY_ASK_BEFORE_UPLOAD, askBeforeUpload).apply();
+    }
+
+    /**
      * Check if all required server settings are configured
-     * 
+     *
      * @param context The application context
      * @return True if all required settings are configured, false otherwise
      */
@@ -160,7 +229,7 @@ public class PreferencesUtil {
         String address = prefs.getString(KEY_SERVER_ADDRESS, DEFAULT_SERVER_ADDRESS);
         int port = prefs.getInt(KEY_SERVER_PORT, DEFAULT_SERVER_PORT);
         String clientKey = prefs.getString(KEY_CLIENT_KEY, DEFAULT_CLIENT_KEY);
-        
+
         return !address.isEmpty() && port > 0 && !clientKey.isEmpty();
     }
 }

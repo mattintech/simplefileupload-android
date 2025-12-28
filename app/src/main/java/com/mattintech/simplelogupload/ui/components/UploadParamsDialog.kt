@@ -5,8 +5,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.mattintech.simplelogupload.util.PreferencesUtil
 
 /**
  * Dialog for entering upload parameters
@@ -19,8 +21,13 @@ fun UploadParamsDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int, Int) -> Unit
 ) {
-    var maxDownloads by remember { mutableStateOf("5") }
-    var expiryHours by remember { mutableStateOf("24") }
+    val context = LocalContext.current
+    var maxDownloads by remember {
+        mutableStateOf(PreferencesUtil.getDefaultMaxDownloads(context).toString())
+    }
+    var expiryHours by remember {
+        mutableStateOf(PreferencesUtil.getDefaultExpiryHours(context).toString())
+    }
 
     var maxDownloadsError by remember { mutableStateOf<String?>(null) }
     var expiryHoursError by remember { mutableStateOf<String?>(null) }

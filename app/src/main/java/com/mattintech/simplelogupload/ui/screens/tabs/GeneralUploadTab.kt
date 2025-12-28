@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.mattintech.simplelogupload.ui.components.UploadParamsDialog
 import com.mattintech.simplelogupload.ui.components.UploadResultDialog
 import com.mattintech.simplelogupload.util.PermissionUtil
+import com.mattintech.simplelogupload.util.PreferencesUtil
 import com.mattintech.simplelogupload.viewmodel.MainViewModel
 
 /**
@@ -166,7 +167,17 @@ fun GeneralUploadTab(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
-                        onClick = { viewModel.showUploadParamsDialog() },
+                        onClick = {
+                            if (PreferencesUtil.getAskBeforeUpload(context)) {
+                                viewModel.showUploadParamsDialog()
+                            } else {
+                                val maxDownloads = PreferencesUtil.getDefaultMaxDownloads(context)
+                                val expiryHours = PreferencesUtil.getDefaultExpiryHours(context)
+                                uiState.selectedFile?.let { file ->
+                                    viewModel.uploadFile(file, maxDownloads, expiryHours)
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isLoading
                     ) {

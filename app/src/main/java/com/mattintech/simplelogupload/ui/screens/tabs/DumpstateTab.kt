@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mattintech.simplelogupload.ui.components.UploadParamsDialog
 import com.mattintech.simplelogupload.ui.components.UploadResultDialog
+import com.mattintech.simplelogupload.util.PreferencesUtil
 import com.mattintech.simplelogupload.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -138,7 +139,15 @@ fun DumpstateTab(
 
                 // Upload button
                 Button(
-                    onClick = { viewModel.showUploadParamsDialog() },
+                    onClick = {
+                        if (PreferencesUtil.getAskBeforeUpload(context)) {
+                            viewModel.showUploadParamsDialog()
+                        } else {
+                            val maxDownloads = PreferencesUtil.getDefaultMaxDownloads(context)
+                            val expiryHours = PreferencesUtil.getDefaultExpiryHours(context)
+                            viewModel.uploadSelectedDumpstates(maxDownloads, expiryHours)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.isLoading && uiState.selectedDumpstateIndices.isNotEmpty()
                 ) {
