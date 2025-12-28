@@ -11,11 +11,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.journeyapps.barcodescanner.ScanContract
 import com.mattintech.simplelogupload.R
@@ -54,6 +58,7 @@ fun SettingsScreen(
     var askBeforeUpload by remember {
         mutableStateOf(PreferencesUtil.getAskBeforeUpload(context))
     }
+    var clientKeyVisible by remember { mutableStateOf(false) }
 
     var serverAddressError by remember { mutableStateOf<String?>(null) }
     var serverPortError by remember { mutableStateOf<String?>(null) }
@@ -266,6 +271,15 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 isError = clientKeyError != null,
                 supportingText = clientKeyError?.let { { Text(it) } },
+                visualTransformation = if (clientKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { clientKeyVisible = !clientKeyVisible }) {
+                        Icon(
+                            imageVector = if (clientKeyVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = if (clientKeyVisible) "Hide client key" else "Show client key"
+                        )
+                    }
+                },
                 singleLine = true
             )
 
