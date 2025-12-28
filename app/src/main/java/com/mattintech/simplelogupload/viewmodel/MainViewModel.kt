@@ -139,7 +139,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             showUploadResultDialog = true,
                             uploadProgress = 0,
                             bytesUploaded = 0,
-                            totalBytes = 0
+                            totalBytes = 0,
+                            selectedFile = null,
+                            selectedFileName = null
                         )
                     }
                     AppConstants.ACTION_UPLOAD_ERROR -> {
@@ -325,6 +327,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun clearDumpstateSelections() {
         _uiState.value = _uiState.value.copy(
             selectedDumpstateIndices = emptySet()
+        )
+    }
+
+    /**
+     * Clear the selected file
+     */
+    fun clearSelectedFile() {
+        _uiState.value = _uiState.value.copy(
+            selectedFile = null,
+            selectedFileName = null
         )
     }
 
